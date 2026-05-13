@@ -150,7 +150,6 @@ function renderTable() {
       <td class="py-2.5 px-3"><div class="flex gap-1 justify-end">
         <button onclick="openRenewModal('${c.user_id}')" title="Rinnova" class="p-1.5 rounded border border-slate-300 hover:bg-blue-50 hover:border-blue-400 text-sm">↻</button>
         <button onclick="openESPModal('${c.user_id}', '${c.azienda_id}')" title="Configura ESP32" class="p-1.5 rounded border border-slate-300 hover:bg-purple-50 hover:border-purple-400 text-sm">📡</button>
-        <button onclick="openQRModal('${c.user_id}')" title="QR Setup" class="p-1.5 rounded border border-slate-300 hover:bg-purple-50 hover:border-purple-400 text-sm">▦</button>
         <button onclick="openEditModal('${c.user_id}')" title="Modifica" class="p-1.5 rounded border border-slate-300 hover:bg-slate-100 text-sm">✎</button>
         <button onclick="doResetPassword('${c.user_id}')" title="Reset password" class="p-1.5 rounded border border-slate-300 hover:bg-amber-50 hover:border-amber-400 text-sm">⚿</button>
         <button onclick="doDeleteClient('${c.user_id}')" title="Elimina" class="p-1.5 rounded border border-slate-300 hover:bg-red-50 hover:border-red-400 text-red-700 text-sm">✕</button>
@@ -161,7 +160,7 @@ function renderTable() {
 
 function escapeHtml(s) { return String(s||'').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
 
-// ========== MODALE ESP32 — TOKEN + MAPPING SONDE ==========
+// ========== MODALE ESP32 ==========
 
 async function openESPModal(userId, aziendaId) {
   currentAziendaId = aziendaId;
@@ -172,29 +171,24 @@ async function openESPModal(userId, aziendaId) {
   document.getElementById('modal-esp').classList.remove('hidden');
 
   try {
-    // Carica token esistenti e apparecchi disponibili in parallelo
     const [{ tokens }, { apparecchi }] = await Promise.all([
       callAdminApi('list_device_tokens', { azienda_id: aziendaId }),
       callAdminApi('list_apparecchi', { azienda_id: aziendaId })
     ]);
 
     const apparecchiList = apparecchi || [];
-
-    // Per ogni token carica il mapping sonde
     let espBlocks = '';
 
     if (!tokens || tokens.length === 0) {
       espBlocks = '<div class="text-center py-4 text-slate-400 text-sm">Nessun ESP32 configurato. Genera un token per iniziare.</div>';
     } else {
       for (const t of tokens) {
-        // Carica mapping sonde per questo token
         const { sonde } = await callAdminApi('list_token_sonde', { token_id: t.id }).catch(() => ({ sonde: [] }));
-        const sondeList = sonde || [];
-        espBlocks += renderESPBlock(t, sondeList, apparecchiList, aziendaId);
+        espBlocks += renderESPBlock(t, sonde || [], apparecchiList, aziendaId);
       }
     }
 
-    const html = `
+    document.getElementById('esp-device-list').innerHTML = `
       <div class="space-y-4">
         ${espBlocks}
         <button onclick="generateNewToken('${aziendaId}')"
@@ -202,8 +196,6 @@ async function openESPModal(userId, aziendaId) {
           + Aggiungi nuovo ESP32
         </button>
       </div>`;
-
-    document.getElementById('esp-device-list').innerHTML = html;
   } catch(e) {
     document.getElementById('esp-device-list').innerHTML = `<div class="text-red-500 text-sm">Errore: ${e.message}</div>`;
   }
@@ -214,12 +206,6 @@ function renderESPBlock(token, sonde, apparecchiList, aziendaId) {
     ? 'Ultimo invio: ' + new Date(token.last_used_at).toLocaleString('it-IT')
     : 'Mai utilizzato';
 
-  // Opzioni dropdown apparecchi
-  const appOptions = apparecchiList.map(a =>
-    `<option value="${a.id}">${escapeHtml(a.name)} (${a.type === 'frigo' ? '❄️ Frigo' : '🧊 Gelo'})</option>`
-  ).join('');
-
-  // Righe sonde già mappate
   let sondeRows = '';
   if (sonde.length === 0) {
     sondeRows = '<div class="text-xs text-slate-400 italic py-1">Nessuna sonda mappata — verranno create automaticamente al primo invio.</div>';
@@ -244,7 +230,6 @@ function renderESPBlock(token, sonde, apparecchiList, aziendaId) {
 
   return `
     <div class="border border-slate-200 rounded-lg overflow-hidden" id="esp-block-${token.id}">
-      <!-- Header token -->
       <div class="bg-slate-50 px-4 py-3 flex justify-between items-start gap-2">
         <div class="min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
@@ -261,50 +246,42 @@ function renderESPBlock(token, sonde, apparecchiList, aziendaId) {
             📱 QR Token
           </button>
           <button onclick="regenerateToken('${token.id}', '${aziendaId}')"
+                  title="Rigenera token"
                   class="px-2.5 py-1.5 bg-slate-200 text-slate-700 rounded text-xs font-bold hover:bg-slate-300">
             🔄
           </button>
+          <button onclick="deleteDeviceToken('${token.id}', '${aziendaId}')"
+                  title="Elimina dispositivo"
+                  class="px-2.5 py-1.5 bg-red-100 text-red-700 rounded text-xs font-bold hover:bg-red-200">
+            🗑
+          </button>
         </div>
       </div>
-
-      <!-- Token stringa + copia -->
       <div class="px-4 py-2 bg-white border-b border-slate-100 flex items-center gap-2">
         <code class="text-[11px] text-slate-500 font-mono truncate flex-1" id="token-str-${token.id}">${token.token}</code>
         <button onclick="copyToken('${token.id}')"
                 class="text-[11px] px-2 py-1 bg-slate-100 rounded hover:bg-slate-200 shrink-0">📋 Copia</button>
       </div>
-
-      <!-- QR container (nascosto di default) -->
       <div id="qr-container-${token.id}" class="hidden px-4 py-3 bg-white border-b border-slate-100 text-center"></div>
-
-      <!-- Mapping sonde -->
       <div class="px-4 py-3 bg-white">
         <div class="text-xs font-bold text-slate-600 mb-2">🌡️ Mapping sonde → apparecchi</div>
-        <div id="sonde-mapping-${token.id}">
-          ${sondeRows}
-        </div>
+        <div id="sonde-mapping-${token.id}">${sondeRows}</div>
       </div>
     </div>`;
 }
 
-// Mostra/genera QR del token per configurare l'ESP32
 function showTokenQR(token, tokenId) {
   const container = document.getElementById(`qr-container-${tokenId}`);
   if (!container) return;
-
   if (!container.classList.contains('hidden') && container.innerHTML.trim() !== '') {
     container.classList.add('hidden');
     return;
   }
-
   container.classList.remove('hidden');
   container.innerHTML = '<div class="text-xs text-slate-400 py-2">Generazione QR...</div>';
-
   const endpoint = SUPABASE_URL + '/functions/v1/ingest-temperature';
   const payload = JSON.stringify({ device_token: token, endpoint });
-
   container.innerHTML = '';
-
   if (typeof QRCode !== 'undefined') {
     new QRCode(container, { text: payload, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M });
   } else {
@@ -313,12 +290,10 @@ function showTokenQR(token, tokenId) {
     img.style.cssText = 'width:180px;height:180px;display:block;margin:0 auto;';
     container.appendChild(img);
   }
-
   const caption = document.createElement('div');
   caption.className = 'text-[11px] text-slate-500 mt-2';
   caption.textContent = 'Inquadra con il pannello di configurazione ESP32';
   container.appendChild(caption);
-
   const closeBtn = document.createElement('button');
   closeBtn.textContent = '✕ Chiudi QR';
   closeBtn.className = 'mt-2 text-xs bg-slate-200 px-3 py-1 rounded';
@@ -333,32 +308,19 @@ function copyToken(tokenId) {
   showToast('Token copiato', 'success');
 }
 
-// Genera un nuovo token per un ESP32 aggiuntivo
 async function generateNewToken(aziendaId) {
   try {
     const token = crypto.randomUUID
       ? crypto.randomUUID()
       : ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
           (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c/4).toString(16));
-
-    await callAdminApi('upsert_device_token', {
-      azienda_id: aziendaId,
-      apparecchio_id: null,   // non più obbligatorio 1:1
-      token,
-      enabled: true
-    });
-
+    await callAdminApi('upsert_device_token', { azienda_id: aziendaId, apparecchio_id: null, token, enabled: true });
     showToast('Nuovo token generato', 'success');
-
-    // Ricarica il modale per mostrare il nuovo token
     const userId = allClients.find(c => c.azienda_id === aziendaId)?.user_id;
     if (userId) openESPModal(userId, aziendaId);
-  } catch(e) {
-    showToast('Errore: ' + e.message, 'error');
-  }
+  } catch(e) { showToast('Errore: ' + e.message, 'error'); }
 }
 
-// Rigenera il token di un ESP32 esistente
 async function regenerateToken(tokenId, aziendaId) {
   if (!confirm('Rigenerare il token? Il firmware ESP32 dovrà essere aggiornato con il nuovo token.')) return;
   try {
@@ -366,52 +328,40 @@ async function regenerateToken(tokenId, aziendaId) {
       ? crypto.randomUUID()
       : ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
           (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c/4).toString(16));
-
     await callAdminApi('update_device_token', { token_id: tokenId, token: newToken });
     showToast('Token rigenerato', 'success');
-
     const userId = allClients.find(c => c.azienda_id === aziendaId)?.user_id;
     if (userId) openESPModal(userId, aziendaId);
-  } catch(e) {
-    showToast('Errore: ' + e.message, 'error');
-  }
+  } catch(e) { showToast('Errore: ' + e.message, 'error'); }
 }
 
-// Salva il mapping sonda → apparecchio (con supporto creazione nuovo)
+async function deleteDeviceToken(tokenId, aziendaId) {
+  if (!confirm('Eliminare questo dispositivo ESP32?\nIl token verrà rimosso e il dispositivo non potrà più inviare dati.\nOperazione irreversibile.')) return;
+  try {
+    await callAdminApi('delete_device_token', { token_id: tokenId });
+    showToast('✓ Dispositivo eliminato', 'success');
+    const userId = allClients.find(c => c.azienda_id === aziendaId)?.user_id;
+    if (userId) openESPModal(userId, aziendaId);
+  } catch(e) { showToast('Errore: ' + e.message, 'error'); }
+}
+
 async function saveSondaMapping(sondaId, apparecchioId, aziendaId) {
   if (apparecchioId === '__new__') {
     const nome = prompt('Nome del nuovo apparecchio (es. "Frigo Cucina", "Freezer Dispensa"):');
     if (!nome || !nome.trim()) return;
-
     const tipoStr = prompt('Tipo? Scrivi "frigo" o "gelo":', 'frigo');
     const tipo = (tipoStr === 'gelo') ? 'gelo' : 'frigo';
-
     try {
-      const { apparecchio } = await callAdminApi('create_apparecchio', {
-        azienda_id: aziendaId,
-        name: nome.trim(),
-        type: tipo,
-        area: 'Da configurare'
-      });
+      const { apparecchio } = await callAdminApi('create_apparecchio', { azienda_id: aziendaId, name: nome.trim(), type: tipo, area: 'Da configurare' });
       apparecchioId = apparecchio.id;
       showToast(`✓ Apparecchio "${nome}" creato`, 'success');
-    } catch(e) {
-      showToast('Errore creazione: ' + e.message, 'error');
-      return;
-    }
+    } catch(e) { showToast('Errore creazione: ' + e.message, 'error'); return; }
   }
-
   if (!apparecchioId) return;
-
   try {
-    await callAdminApi('update_sonda_mapping', {
-      sonda_id: sondaId,
-      apparecchio_id: apparecchioId
-    });
+    await callAdminApi('update_sonda_mapping', { sonda_id: sondaId, apparecchio_id: apparecchioId });
     showToast('Mapping salvato', 'success');
-  } catch(e) {
-    showToast('Errore salvataggio mapping: ' + e.message, 'error');
-  }
+  } catch(e) { showToast('Errore salvataggio mapping: ' + e.message, 'error'); }
 }
 
 // ========== CREATE ==========
@@ -436,7 +386,6 @@ async function doCreateClient() {
   const err = document.getElementById('cf-err');
   const btn = document.getElementById('cf-submit');
   err.textContent = '';
-
   const payload = {
     email: document.getElementById('cf-email').value.trim(),
     password: document.getElementById('cf-pass').value,
@@ -448,14 +397,8 @@ async function doCreateClient() {
     indirizzo: document.getElementById('cf-indirizzo').value.trim(),
     piva: document.getElementById('cf-piva').value.trim(),
   };
-
-  if (!payload.email || !payload.password || !payload.nome_ristorante) {
-    err.textContent = 'Compila i campi obbligatori (*)'; return;
-  }
-  if (payload.password.length < 8) {
-    err.textContent = 'Password troppo corta (min 8 caratteri)'; return;
-  }
-
+  if (!payload.email || !payload.password || !payload.nome_ristorante) { err.textContent = 'Compila i campi obbligatori (*)'; return; }
+  if (payload.password.length < 8) { err.textContent = 'Password troppo corta (min 8 caratteri)'; return; }
   btn.disabled = true; btn.textContent = 'Creazione…';
   try {
     await callAdminApi('create_client', payload);
@@ -463,11 +406,8 @@ async function doCreateClient() {
     showToast(`✓ Cliente creato: ${payload.email}`, 'success');
     alert(`Cliente creato!\n\nEmail: ${payload.email}\nPassword: ${payload.password}\n\n⚠️ COMUNICA QUESTE CREDENZIALI AL CLIENTE.`);
     await loadClients();
-  } catch(e) {
-    err.textContent = e.message;
-  } finally {
-    btn.disabled = false; btn.textContent = '✓ Crea cliente';
-  }
+  } catch(e) { err.textContent = e.message; }
+  finally { btn.disabled = false; btn.textContent = '✓ Crea cliente'; }
 }
 
 // ========== RENEW ==========
@@ -542,12 +482,10 @@ async function doSaveEdit() {
     closeModal('modal-edit');
     showToast('✓ Modifiche salvate', 'success');
     await loadClients();
-  } catch(e) {
-    showToast('Errore: ' + e.message, 'error');
-  }
+  } catch(e) { showToast('Errore: ' + e.message, 'error'); }
 }
 
-// ========== QR SETUP (cliente) ==========
+// ========== QR SETUP ==========
 async function openQRModal(userId) {
   const c = allClients.find(x => x.user_id === userId);
   if (!c) return;
@@ -587,7 +525,7 @@ async function doResetPassword(userId) {
   } catch(e) { showToast('Errore: ' + e.message, 'error'); }
 }
 
-// ========== DELETE ==========
+// ========== DELETE CLIENT ==========
 async function doDeleteClient(userId) {
   const c = allClients.find(x => x.user_id === userId);
   if (!c) return;
