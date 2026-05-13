@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HACCP Pro · Admin Dashboard</title>
-<script>window.tailwind = { config: {} };</script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js?v=2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 <style>
   body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
   .nav-grad { background: linear-gradient(135deg, #1e3a5f 0%, #2563a8 100%); }
+  /* Modal animato */
   .modal-bg { animation: fadeIn .15s ease; }
   .modal-card { animation: slideUp .2s ease; }
   @keyframes fadeIn { from{opacity:0} to{opacity:1} }
@@ -19,7 +19,9 @@
 </head>
 <body class="bg-slate-50 min-h-screen">
 
-<!-- LOGIN SCREEN -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- LOGIN SCREEN                                                  -->
+<!-- ═══════════════════════════════════════════════════════════ -->
 <div id="login-screen" class="fixed inset-0 nav-grad flex items-center justify-center p-6 z-50">
   <div class="bg-white/8 backdrop-blur-md border border-white/10 rounded-2xl p-8 w-full max-w-sm shadow-2xl">
     <div class="text-center mb-6">
@@ -49,8 +51,12 @@
   </div>
 </div>
 
-<!-- DASHBOARD -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- DASHBOARD                                                      -->
+<!-- ═══════════════════════════════════════════════════════════ -->
 <div id="dash" class="hidden">
+
+  <!-- Header -->
   <div class="nav-grad text-white px-5 py-3 flex justify-between items-center shadow">
     <div>
       <div class="text-base font-bold">HACCP Pro · Admin</div>
@@ -63,139 +69,183 @@
   </div>
 
   <div class="max-w-7xl mx-auto p-4 sm:p-6">
-    <div class="flex gap-2 mb-5 overflow-x-auto pb-1">
-      <button onclick="setView('clients',this)" id="nav-clients" class="nav-pill nav-pill-active px-4 py-2 rounded-md bg-slate-800 text-white text-sm font-bold whitespace-nowrap">👥 Clienti</button>
-      <button onclick="setView('audit',this)" id="nav-audit" class="nav-pill px-4 py-2 rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-bold whitespace-nowrap">📋 Audit Log</button>
-      <button onclick="setView('trash',this)" id="nav-trash" class="nav-pill px-4 py-2 rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-bold whitespace-nowrap">🗑️ Cestino</button>
+
+    <!-- Stat Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+      <div class="bg-white border border-slate-200 rounded-lg p-3.5">
+        <div class="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Totale</div>
+        <div id="stat-totale" class="text-2xl font-bold mt-1 text-slate-800">—</div>
+      </div>
+      <div class="bg-green-50 border border-green-200 rounded-lg p-3.5">
+        <div class="text-[11px] text-green-700 uppercase tracking-wider font-semibold">Attivi</div>
+        <div id="stat-attivi" class="text-2xl font-bold mt-1 text-green-900">—</div>
+      </div>
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3.5">
+        <div class="text-[11px] text-amber-700 uppercase tracking-wider font-semibold">In scadenza</div>
+        <div id="stat-scadenza" class="text-2xl font-bold mt-1 text-amber-900">—</div>
+      </div>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-3.5">
+        <div class="text-[11px] text-red-700 uppercase tracking-wider font-semibold">Scaduti</div>
+        <div id="stat-scaduti" class="text-2xl font-bold mt-1 text-red-900">—</div>
+      </div>
     </div>
 
-    <!-- VIEW: CLIENTI -->
-    <div id="view-clients">
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <div class="bg-white border border-slate-200 rounded-lg p-3.5">
-          <div class="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Totale</div>
-          <div id="stat-totale" class="text-2xl font-bold mt-1 text-slate-800">—</div>
-        </div>
-        <div class="bg-green-50 border border-green-200 rounded-lg p-3.5">
-          <div class="text-[11px] text-green-700 uppercase tracking-wider font-semibold">Attivi</div>
-          <div id="stat-attivi" class="text-2xl font-bold mt-1 text-green-900">—</div>
-        </div>
-        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3.5">
-          <div class="text-[11px] text-amber-700 uppercase tracking-wider font-semibold">In scadenza</div>
-          <div id="stat-scadenza" class="text-2xl font-bold mt-1 text-amber-900">—</div>
-        </div>
-        <div class="bg-red-50 border border-red-200 rounded-lg p-3.5">
-          <div class="text-[11px] text-red-700 uppercase tracking-wider font-semibold">Scaduti</div>
-          <div id="stat-scaduti" class="text-2xl font-bold mt-1 text-red-900">—</div>
-        </div>
-      </div>
-
-      <div class="flex flex-col sm:flex-row gap-2 mb-4">
-        <input id="search" placeholder="Cerca ristorante, email, telefono…" oninput="renderTable()" class="flex-1 px-3 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:border-blue-400">
-        <select id="filter-stato" onchange="renderTable()" class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
-          <option value="all">Tutti gli stati</option>
-          <option value="attivo">Solo attivi</option>
-          <option value="in_scadenza">In scadenza (≤7gg)</option>
-          <option value="scaduto">Solo scaduti</option>
-        </select>
-        <button onclick="openCreateModal()" class="px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold">+ Nuovo Cliente</button>
-      </div>
-
-      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 border-b border-slate-200">
-              <tr class="text-left">
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Ristorante</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden md:table-cell">Email</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Piano</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider" title="Pause utilizzate / massime">Pause</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Scadenza</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Stato</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Azioni</th>
-              </tr>
-            </thead>
-            <tbody id="clienti-body">
-              <tr><td colspan="7" class="p-8 text-center text-slate-400 text-sm">Caricamento…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <p id="footer-info" class="text-xs text-slate-400 mt-3 text-right"></p>
+    <!-- Toolbar -->
+    <div class="flex flex-col sm:flex-row gap-2 mb-4">
+      <input id="search" placeholder="Cerca ristorante, email, telefono…" oninput="renderTable()"
+             class="flex-1 px-3 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:border-blue-400">
+      <select id="filter-stato" onchange="renderTable()"
+              class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
+        <option value="all">Tutti gli stati</option>
+        <option value="attivo">Solo attivi</option>
+        <option value="in_scadenza">In scadenza (≤7gg)</option>
+        <option value="scaduto">Solo scaduti</option>
+      </select>
+      <button onclick="openCreateModal()"
+              class="px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold transition whitespace-nowrap">
+        + Nuovo Cliente
+      </button>
     </div>
 
-    <!-- VIEW: AUDIT LOG -->
-    <div id="view-audit" class="hidden">
-      <div class="bg-white border border-slate-200 rounded-lg p-4 mb-4">
-        <h3 class="font-bold text-slate-700 mb-3">🔍 Filtri di ricerca</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div><label class="text-[11px] font-bold text-slate-600 block mb-1">Cliente</label><select id="audit-client" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white"><option value="">Tutti i clienti</option></select></div>
-          <div><label class="text-[11px] font-bold text-slate-600 block mb-1">Tabella</label><select id="audit-table" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white"><option value="">Tutte</option><option value="temperature">Temperature</option><option value="azioni_correttive">Azioni correttive</option><option value="firme">Firme</option><option value="apparecchi">Apparecchi</option><option value="operatori">Operatori</option><option value="aziende">Aziende</option><option value="profiles">Profili</option></select></div>
-          <div><label class="text-[11px] font-bold text-slate-600 block mb-1">Operazione</label><select id="audit-op" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white"><option value="">Tutte</option><option value="INSERT">INSERT</option><option value="UPDATE">UPDATE</option><option value="DELETE">DELETE</option><option value="SOFT_DELETE">SOFT_DELETE</option><option value="RESTORE">RESTORE</option></select></div>
-          <div><label class="text-[11px] font-bold text-slate-600 block mb-1">Periodo</label><select id="audit-period" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white"><option value="7">Ultimi 7 giorni</option><option value="30" selected>Ultimi 30 giorni</option><option value="90">Ultimi 90 giorni</option><option value="365">Ultimo anno</option></select></div>
-        </div>
-        <div class="flex gap-2 mt-3 flex-wrap"><button onclick="loadAudit()" class="px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold">🔍 Cerca</button><button onclick="exportAuditCSV()" class="px-4 py-2 rounded-md border border-slate-300 hover:bg-slate-50 text-sm font-bold">⬇ Esporta CSV</button><button onclick="clearAudit()" class="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm font-bold">🗑 Elimina log cliente</button></div>
+    <!-- Tabella -->
+    <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 border-b border-slate-200">
+            <tr class="text-left">
+              <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Ristorante</th>
+              <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden md:table-cell">Email</th>
+              <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Piano</th>
+              <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Scadenza</th>
+              <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Stato</th>
+              <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Azioni</th>
+            </tr>
+          </thead>
+          <tbody id="clienti-body">
+            <tr><td colspan="6" class="p-8 text-center text-slate-400 text-sm">Caricamento…</td></tr>
+          </tbody>
+        </table>
       </div>
-      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 border-b border-slate-200"><tr><th class="py-3 px-3 text-[11px] font-bold">Quando</th><th class="py-3 px-3 text-[11px] font-bold">Chi</th><th class="py-3 px-3 text-[11px] font-bold">Tabella</th><th class="py-3 px-3 text-[11px] font-bold">Operazione</th><th class="py-3 px-3 text-[11px] font-bold">Dettagli</th></tr></thead>
-            <tbody id="audit-body"><tr><td colspan="5" class="p-8 text-center text-slate-400">Premi "Cerca" per visualizzare i log</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-      <p id="audit-count" class="text-xs text-slate-400 mt-3 text-right"></p>
     </div>
 
-    <!-- VIEW: CESTINO -->
-    <div id="view-trash" class="hidden">
-      <div class="bg-white border border-slate-200 rounded-lg p-4 mb-4">
-        <h3 class="font-bold text-slate-700 mb-3">🗑️ Cestino</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div><label class="text-[11px] font-bold text-slate-600 block mb-1">Cliente</label><select id="trash-client" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white"><option value="">Seleziona cliente</option></select></div>
-          <div><label class="text-[11px] font-bold text-slate-600 block mb-1">Tipo dati</label><select id="trash-table" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white"><option value="temperature">Temperature</option><option value="azioni_correttive">Azioni correttive</option><option value="firme">Firme</option></select></div>
-        </div>
-        <div class="flex gap-2 mt-3 flex-wrap"><button onclick="loadTrash()" class="px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold">🔍 Mostra cestino</button><button onclick="clearTrash()" class="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm font-bold">🗑 Svuota cestino cliente</button></div>
-      </div>
-      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-        <table class="w-full text-sm"><thead class="bg-slate-50"><tr><th class="py-3 px-3 text-[11px] font-bold">Cancellato il</th><th class="py-3 px-3 text-[11px] font-bold">Dati originali</th><th class="py-3 px-3 text-[11px] font-bold text-right">Azioni</th></tr></thead><tbody id="trash-body"><tr><td colspan="3" class="p-8 text-center text-slate-400">Seleziona cliente e tipo</td></tr></tbody></table>
-      </div>
-      <p id="trash-count" class="text-xs text-slate-400 mt-3 text-right"></p>
-    </div>
+    <p id="footer-info" class="text-xs text-slate-400 mt-3 text-right"></p>
   </div>
 </div>
 
-<!-- MODAL: Crea cliente -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: Crea cliente                                            -->
+<!-- ═══════════════════════════════════════════════════════════ -->
 <div id="modal-create" class="hidden fixed inset-0 bg-black/50 modal-bg flex items-center justify-center p-4 z-40" onclick="closeModalBg(event,'modal-create')">
   <div class="bg-white rounded-xl modal-card w-full max-w-lg max-h-[90vh] overflow-y-auto">
-    <div class="p-5 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white"><h3 class="font-bold text-lg">➕ Nuovo Cliente</h3><button onclick="closeModal('modal-create')" class="text-slate-400 hover:text-slate-700 text-xl">✕</button></div>
+    <div class="p-5 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white">
+      <h3 class="font-bold text-lg">➕ Nuovo Cliente</h3>
+      <button onclick="closeModal('modal-create')" class="text-slate-400 hover:text-slate-700 text-xl">✕</button>
+    </div>
     <div class="p-5 space-y-3">
       <div class="grid grid-cols-2 gap-3">
-        <div class="col-span-2"><label class="text-xs font-bold text-slate-600 block mb-1">Email <span class="text-red-500">*</span></label><input id="cf-email" type="email" placeholder="cliente@esempio.it" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"></div>
-        <div class="col-span-2"><label class="text-xs font-bold text-slate-600 block mb-1">Password <span class="text-red-500">*</span></label><input id="cf-pass" type="text" placeholder="min. 8 caratteri" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono"><p class="text-[11px] text-slate-500 mt-1">⚠️ Comunicala al cliente</p></div>
-        <div class="col-span-2"><label class="text-xs font-bold text-slate-600 block mb-1">Nome ristorante <span class="text-red-500">*</span></label><input id="cf-nome" type="text" placeholder="Es: Trattoria Da Mario" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"></div>
-        <div><label class="text-xs font-bold text-slate-600 block mb-1">Telefono</label><input id="cf-tel" type="text" placeholder="+39 333 1234567" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"></div>
-        <div><label class="text-xs font-bold text-slate-600 block mb-1">CallMeBot API Key</label><input id="cf-cmb" type="text" placeholder="es. 1234567" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"></div>
-        <div><label class="text-xs font-bold text-slate-600 block mb-1">Piano <span class="text-red-500">*</span></label><select id="cf-piano" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white"><option value="14.99_basic">14.99€ — Basic (solo dati + PDF)</option><option value="24.99_standard">24.99€ — Standard (fino a 2 ESP32 + WA)</option><option value="34.99_pro">34.99€ — Pro (fino a 5 ESP32 + WA + Chiamate)</option><option value="44.99_business">44.99€ — Business (ESP32 illimitati + WA + Chiamate)</option></select></div>
-        <div><label class="text-xs font-bold text-slate-600 block mb-1">Mesi iniziali</label><select id="cf-mesi" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white"><option value="1">1 mese</option><option value="3">3 mesi</option><option value="6">6 mesi</option><option value="12">12 mesi</option></select></div>
-        <div class="col-span-2"><label class="text-xs font-bold text-slate-600 block mb-1">Indirizzo</label><input id="cf-indirizzo" type="text" placeholder="Opzionale" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"></div>
-        <div class="col-span-2"><label class="text-xs font-bold text-slate-600 block mb-1">P.IVA</label><input id="cf-piva" type="text" placeholder="Opzionale" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"></div>
+        <div class="col-span-2">
+          <label class="text-xs font-bold text-slate-600 block mb-1">Email <span class="text-red-500">*</span></label>
+          <input id="cf-email" type="email" placeholder="cliente@esempio.it"
+                 class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs font-bold text-slate-600 block mb-1">Password <span class="text-red-500">*</span></label>
+          <input id="cf-pass" type="text" placeholder="min. 8 caratteri"
+                 class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono">
+          <p class="text-[11px] text-slate-500 mt-1">⚠️ Comunicala al cliente — non potrai più rivederla in chiaro.</p>
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs font-bold text-slate-600 block mb-1">Nome ristorante <span class="text-red-500">*</span></label>
+          <input id="cf-nome" type="text" placeholder="Es: Trattoria Da Mario"
+                 class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-600 block mb-1">Telefono</label>
+          <input id="cf-tel" type="text" placeholder="+39 333 1234567"
+                 class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-600 block mb-1">CallMeBot API Key</label>
+          <input id="cf-cmb" type="text" placeholder="es. 1234567"
+                 class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-600 block mb-1">Piano <span class="text-red-500">*</span></label>
+          <select id="cf-piano" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white">
+            <option value="14.99_manuale">14.99€ Manuale</option>
+            <option value="24.99_automatico">24.99€ Automatico</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-600 block mb-1">Mesi iniziali</label>
+          <select id="cf-mesi" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white">
+            <option value="1" selected>1 mese</option>
+            <option value="3">3 mesi</option>
+            <option value="6">6 mesi</option>
+            <option value="12">12 mesi</option>
+          </select>
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs font-bold text-slate-600 block mb-1">Indirizzo</label>
+          <input id="cf-indirizzo" type="text" placeholder="Opzionale"
+                 class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs font-bold text-slate-600 block mb-1">P.IVA</label>
+          <input id="cf-piva" type="text" placeholder="Opzionale"
+                 class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
+        </div>
       </div>
       <p id="cf-err" class="text-red-600 text-sm font-medium"></p>
-      <div class="flex gap-2 pt-2"><button onclick="closeModal('modal-create')" class="flex-1 px-4 py-2.5 rounded-md border border-slate-300 hover:bg-slate-50 text-sm font-bold">Annulla</button><button id="cf-submit" onclick="doCreateClient()" class="flex-[2] px-4 py-2.5 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold">✓ Crea cliente</button></div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeModal('modal-create')"
+                class="flex-1 px-4 py-2.5 rounded-md border border-slate-300 hover:bg-slate-50 text-sm font-bold">
+          Annulla
+        </button>
+        <button id="cf-submit" onclick="doCreateClient()"
+                class="flex-[2] px-4 py-2.5 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold">
+          ✓ Crea cliente
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- MODAL: Rinnova -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: Rinnova                                                 -->
+<!-- ═══════════════════════════════════════════════════════════ -->
 <div id="modal-renew" class="hidden fixed inset-0 bg-black/50 modal-bg flex items-center justify-center p-4 z-40" onclick="closeModalBg(event,'modal-renew')">
-  <div class="bg-white rounded-xl modal-card w-full max-w-md"><div class="p-5 border-b border-slate-200 flex justify-between"><h3 class="font-bold">↻ Rinnova abbonamento</h3><button onclick="closeModal('modal-renew')" class="text-slate-400">✕</button></div>
-  <div class="p-5"><div class="bg-slate-50 rounded-md p-3 text-sm"><div class="font-bold" id="renew-nome">—</div><div class="text-xs text-slate-500">Scadenza: <span id="renew-scadenza-attuale">—</span></div></div>
-  <div class="grid grid-cols-2 gap-2 mt-4"><button onclick="doRenew(1)" class="p-2 border rounded">+1 mese</button><button onclick="doRenew(3)" class="p-2 border rounded">+3 mesi</button><button onclick="doRenew(6)" class="p-2 border rounded">+6 mesi</button><button onclick="doRenew(12)" class="p-2 border rounded">+12 mesi</button></div>
-  <div class="mt-3"><button onclick="doRenewForever()" class="w-full p-2 bg-purple-600 text-white rounded">∞ Per sempre</button></div></div></div>
+  <div class="bg-white rounded-xl modal-card w-full max-w-md">
+    <div class="p-5 border-b border-slate-200 flex justify-between items-center">
+      <h3 class="font-bold text-lg">↻ Rinnova abbonamento</h3>
+      <button onclick="closeModal('modal-renew')" class="text-slate-400 hover:text-slate-700 text-xl">✕</button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div class="bg-slate-50 rounded-md p-3 text-sm">
+        <div class="font-bold" id="renew-nome">—</div>
+        <div class="text-xs text-slate-500 mt-1">Scadenza attuale: <span id="renew-scadenza-attuale">—</span></div>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-slate-600 mb-2">Aggiungi al periodo attuale:</p>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="doRenew(1)"  class="px-4 py-2.5 rounded-md border border-slate-300 hover:bg-blue-50 hover:border-blue-400 text-sm font-bold">+ 1 mese</button>
+          <button onclick="doRenew(3)"  class="px-4 py-2.5 rounded-md border border-slate-300 hover:bg-blue-50 hover:border-blue-400 text-sm font-bold">+ 3 mesi</button>
+          <button onclick="doRenew(6)"  class="px-4 py-2.5 rounded-md border border-slate-300 hover:bg-blue-50 hover:border-blue-400 text-sm font-bold">+ 6 mesi</button>
+          <button onclick="doRenew(12)" class="px-4 py-2.5 rounded-md border border-slate-300 hover:bg-blue-50 hover:border-blue-400 text-sm font-bold">+ 12 mesi</button>
+        </div>
+      </div>
+      <div class="border-t border-slate-200 pt-3">
+        <button onclick="doRenewForever()" class="w-full px-4 py-2.5 rounded-md bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold">
+          ∞ Rinnova "per sempre" (anno 2099)
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- MODAL: Modifica cliente (COMPLETA con TUTTI gli ID) -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: Modifica cliente                                       -->
+<!-- ═══════════════════════════════════════════════════════════ -->
 <div id="modal-edit" class="hidden fixed inset-0 bg-black/50 modal-bg flex items-center justify-center p-4 z-40" onclick="closeModalBg(event,'modal-edit')">
   <div class="bg-white rounded-xl modal-card w-full max-w-md">
     <div class="p-5 border-b border-slate-200 flex justify-between items-center">
@@ -217,25 +267,10 @@
       </div>
       <div>
         <label class="text-xs font-bold text-slate-600 block mb-1">Piano</label>
-        <select id="ef-piano" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white" onchange="toggleWaNotifTipo()">
-          <option value="14.99_basic">14.99€ — Basic (solo dati + PDF)</option>
-          <option value="24.99_standard">24.99€ — Standard (fino a 2 ESP32 + WA)</option>
-          <option value="34.99_pro">34.99€ — Pro (fino a 5 ESP32 + WA + Chiamate)</option>
-          <option value="44.99_business">44.99€ — Business (ESP32 illimitati + WA + Chiamate)</option>
+        <select id="ef-piano" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white">
+          <option value="14.99_manuale">14.99€ Manuale</option>
+          <option value="24.99_automatico">24.99€ Automatico</option>
         </select>
-      </div>
-      <div id="ef-wa-tipo-block" style="display:none;">
-        <label class="text-xs font-bold text-slate-600 block mb-1">Tipo notifica WhatsApp <span class="text-purple-600">(piani 19.99 e 24.99)</span></label>
-        <select id="ef-wa-notif-tipo" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white">
-          <option value="entrambi">📲 Messaggio + 📞 Chiamata vocale</option>
-          <option value="solo_messaggio">📲 Solo messaggio WhatsApp</option>
-          <option value="solo_chiamata">📞 Solo chiamata vocale</option>
-        </select>
-      </div>
-      <div>
-        <label class="text-xs font-bold text-slate-600 block mb-1">Data scadenza</label>
-        <input id="ef-scadenza" type="date" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
-        <p class="text-[11px] text-slate-500 mt-1">⚠️ Modifica diretta. Per estensioni rapide usa il bottone ↻ Rinnova.</p>
       </div>
       <div>
         <label class="text-xs font-bold text-slate-600 block mb-1">Note interne (visibili solo a te)</label>
@@ -249,20 +284,45 @@
   </div>
 </div>
 
-<!-- MODAL: QR setup -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: QR setup                                               -->
+<!-- ═══════════════════════════════════════════════════════════ -->
 <div id="modal-qr" class="hidden fixed inset-0 bg-black/50 modal-bg flex items-center justify-center p-4 z-40" onclick="closeModalBg(event,'modal-qr')">
-  <div class="bg-white rounded-xl modal-card w-full max-w-sm"><div class="p-5 border-b"><h3 class="font-bold">▦ QR Setup</h3><button onclick="closeModal('modal-qr')" class="float-right">✕</button></div>
-  <div class="p-5 text-center"><div id="qr-target" class="inline-block p-3 bg-white rounded-lg border-2"></div><p id="qr-nome" class="font-bold mt-2">—</p><button onclick="downloadQR()" class="mt-3 px-4 py-2 bg-slate-800 text-white rounded w-full">Scarica PNG</button></div></div>
+  <div class="bg-white rounded-xl modal-card w-full max-w-sm">
+    <div class="p-5 border-b border-slate-200 flex justify-between items-center">
+      <h3 class="font-bold text-lg">▦ QR Setup Hardware</h3>
+      <button onclick="closeModal('modal-qr')" class="text-slate-400 hover:text-slate-700 text-xl">✕</button>
+    </div>
+    <div class="p-5 text-center">
+      <div id="qr-target" class="inline-block p-3 bg-white rounded-lg border-2 border-slate-200"></div>
+      <p class="text-xs text-slate-500 mt-3">
+        <span id="qr-nome" class="font-bold text-slate-700">—</span><br>
+        Inquadra con un sensore ESP32 per associarlo automaticamente a questo cliente.
+      </p>
+      <details class="mt-3 text-left">
+        <summary class="text-xs text-slate-500 cursor-pointer hover:text-slate-700">Mostra contenuto QR</summary>
+        <pre id="qr-payload" class="text-[10px] mt-2 p-2 bg-slate-50 rounded font-mono overflow-auto"></pre>
+      </details>
+      <button onclick="downloadQR()" class="mt-4 px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold w-full">
+        ⬇ Scarica PNG
+      </button>
+    </div>
+    <!-- Dispositivi registrati -->
+    <div class="border-t border-slate-200 px-5 pb-5">
+      <div class="flex justify-between items-center pt-4 mb-2">
+        <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wider">Dispositivi registrati</h4>
+        <button onclick="loadDevices(currentQRAziendaId)" class="text-[11px] text-blue-600 hover:underline">↻ Aggiorna</button>
+      </div>
+      <div id="qr-devices-list" class="max-h-48 overflow-y-auto">
+        <p class="text-xs text-slate-400 text-center py-2">—</p>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- MODALE GESTIONE ESP32 -->
-<div id="modal-esp" class="hidden fixed inset-0 bg-black/50 modal-bg flex items-center justify-center p-4 z-40" onclick="closeModalBg(event,'modal-esp')">
-  <div class="bg-white rounded-xl modal-card w-full max-w-2xl max-h-[90vh] overflow-y-auto"><div class="p-5 border-b sticky top-0 bg-white"><h3 class="font-bold">📡 Dispositivi ESP32 · <span id="esp-cliente-nome">—</span></h3><button onclick="closeModal('modal-esp')" class="float-right">✕</button></div>
-  <div class="p-5"><div id="esp-device-list"></div><div class="mt-4 text-xs text-slate-400 border-t pt-3">Endpoint: <code>https://nmpbrjnmsybpzwhtsola.supabase.co/functions/v1/ingest-temperature</code></div></div></div>
-</div>
-
+<!-- Toast -->
 <div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-md text-white text-sm font-medium shadow-lg z-50"></div>
 
-<script src="admin.js?v=6"></script>
+<script src="admin.js?v=9"></script>
 </body>
 </html>
