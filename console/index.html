@@ -276,6 +276,18 @@
         <label class="text-xs font-bold text-slate-600 block mb-1">Note interne (visibili solo a te)</label>
         <textarea id="ef-note" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"></textarea>
       </div>
+      <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
+        <div class="flex justify-between items-center">
+          <div>
+            <label class="text-xs font-bold text-slate-600 block">Sospensioni utilizzate</label>
+            <span id="ef-pause-count" class="text-sm font-bold text-slate-800">0/2</span>
+          </div>
+          <button onclick="doResetPause()" id="ef-pause-btn"
+                  class="px-3 py-1.5 rounded-md border border-amber-300 hover:bg-amber-50 text-amber-700 text-xs font-bold">
+            ↻ Azzera contatore
+          </button>
+        </div>
+      </div>
       <div class="flex gap-2 pt-2">
         <button onclick="closeModal('modal-edit')" class="flex-1 px-4 py-2.5 rounded-md border border-slate-300 hover:bg-slate-50 text-sm font-bold">Annulla</button>
         <button onclick="doSaveEdit()" class="flex-[2] px-4 py-2.5 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold">💾 Salva</button>

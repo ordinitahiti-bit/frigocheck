@@ -454,6 +454,16 @@ function openEditModal(userId) {
   const waNotifTipo = document.getElementById('ef-wa-notif-tipo');
   if (waNotifTipo) waNotifTipo.value = c.wa_notif_tipo || 'entrambi';
   document.getElementById('ef-note').value = c.note_admin || '';
+  const pauseN = c.pause_utilizzate || 0;
+  document.getElementById('ef-pause-count').textContent = pauseN + '/2';
+  const pauseBtn = document.getElementById('ef-pause-btn');
+  if (pauseN === 0) {
+    pauseBtn.disabled = true;
+    pauseBtn.classList.add('opacity-40');
+  } else {
+    pauseBtn.disabled = false;
+    pauseBtn.classList.remove('opacity-40');
+  }
   if (c.data_scadenza) {
     const d = new Date(c.data_scadenza);
     document.getElementById('ef-scadenza').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -483,6 +493,23 @@ async function doSaveEdit() {
     showToast('✓ Modifiche salvate', 'success');
     await loadClients();
   } catch(e) { showToast('Errore: ' + e.message, 'error'); }
+}
+
+async function doResetPause() {
+  if (!editingUserId) return;
+  const c = allClients.find(x => x.user_id === editingUserId);
+  if (!c) return;
+  if (!confirm(`Azzerare il contatore sospensioni di "${c.nome_ristorante}"?\nLe sospensioni utilizzate torneranno a 0/2.`)) return;
+  try {
+    await callAdminApi('reset_pause', { user_id: editingUserId });
+    showToast('✓ Contatore sospensioni azzerato', 'success');
+    document.getElementById('ef-pause-count').textContent = '0/2';
+    document.getElementById('ef-pause-btn').disabled = true;
+    document.getElementById('ef-pause-btn').classList.add('opacity-40');
+    await loadClients();
+  } catch(e) {
+    showToast('Errore: ' + e.message, 'error');
+  }
 }
 
 // ========== QR SETUP ==========
