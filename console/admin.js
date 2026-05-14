@@ -466,27 +466,33 @@ function openEditModal(userId) {
   }
   if (c.data_scadenza) {
     const d = new Date(c.data_scadenza);
-    document.getElementById('ef-scadenza').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const scadEl = document.getElementById('ef-scadenza');
+    if (scadEl) scadEl.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   } else {
-    document.getElementById('ef-scadenza').value = '';
+    const scadEl = document.getElementById('ef-scadenza');
+    if (scadEl) scadEl.value = '';
   }
   document.getElementById('modal-edit').classList.remove('hidden');
 }
 
 async function doSaveEdit() {
   if (!editingUserId) return;
+  const waEl = document.getElementById('ef-wa-notif-tipo');
   const payload = {
     user_id: editingUserId,
     nome_ristorante: document.getElementById('ef-nome').value.trim(),
     telefono_whatsapp: document.getElementById('ef-tel').value.trim(),
     callmebot_apikey: document.getElementById('ef-cmb').value.trim(),
     piano_abbonamento: document.getElementById('ef-piano').value,
-    wa_notif_tipo: pianoHasWA(document.getElementById('ef-piano').value) ? document.getElementById('ef-wa-notif-tipo').value : 'entrambi',
+    wa_notif_tipo: (waEl && pianoHasWA(document.getElementById('ef-piano').value)) ? waEl.value : 'entrambi',
     note_admin: document.getElementById('ef-note').value,
   };
-  const scadStr = document.getElementById('ef-scadenza').value;
-  if (scadStr) payload.data_scadenza = new Date(scadStr + 'T23:59:59').toISOString();
-  else payload.data_scadenza = null;
+  const scadEl = document.getElementById('ef-scadenza');
+  if (scadEl) {
+    const scadStr = scadEl.value;
+    if (scadStr) payload.data_scadenza = new Date(scadStr + 'T23:59:59').toISOString();
+    else payload.data_scadenza = null;
+  }
   try {
     await callAdminApi('update_client', payload);
     closeModal('modal-edit');
