@@ -336,6 +336,31 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: ESP32 (gestione token + mapping sonde)                 -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div id="modal-esp" class="hidden fixed inset-0 bg-black/50 modal-bg flex items-center justify-center p-4 z-40" onclick="closeModalBg(event,'modal-esp')">
+  <div class="bg-white rounded-xl modal-card w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="p-5 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white z-10">
+      <div class="min-w-0">
+        <h3 class="font-bold text-lg flex items-center gap-2">📡 Sensori ESP32</h3>
+        <div id="esp-cliente-nome" class="text-xs text-slate-500 mt-0.5 truncate">—</div>
+      </div>
+      <button onclick="closeModal('modal-esp')" class="text-slate-400 hover:text-slate-700 text-xl shrink-0">✕</button>
+    </div>
+    <div class="p-5">
+      <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+        Ogni cliente può avere uno o più sensori ESP32. Genera un <b>token univoco</b> per ogni dispositivo,
+        poi incollalo nel pannello di configurazione dell'ESP (sezione <i>Impostazioni → Token dispositivo</i>)
+        oppure usa il QR code per la configurazione rapida.
+      </p>
+      <div id="esp-device-list">
+        <div class="text-center py-4 text-slate-400 text-sm">Caricamento…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-md text-white text-sm font-medium shadow-lg z-50"></div>
 
