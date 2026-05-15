@@ -423,17 +423,33 @@ function renderAreaPills() {
 }
 
 function renderAreaFilterOptions() {
-  // Aggiorna il <select id="filter-area"> nello storico
+  // Aggiorna il <select id="filter-area"> nello storico (Report).
+  // Le opzioni vengono ricavate dalla colonna `area` della tabella `apparecchi`
+  // (cioè dai valori distinti realmente in uso negli apparecchi caricati in `config`),
+  // così il filtro riflette esattamente i luoghi dei frigoriferi presenti.
   const sel = document.getElementById('filter-area');
   if (!sel) return;
   const prev = sel.value;
   sel.innerHTML = '<option value="ALL">Tutte le zone</option>';
-  zone.forEach(z => {
+
+  // Estrai i valori distinti di area dagli apparecchi, ignorando vuoti/null
+  const areeDistinte = [...new Set(
+    (config || [])
+      .map(c => (c.area || '').trim())
+      .filter(a => a.length > 0)
+  )].sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
+
+  areeDistinte.forEach(areaName => {
+    // Se esiste una voce corrispondente nella tabella `zone`, riusa la sua emoji
+    const z = zone.find(z => (z.nome || '').trim().toLowerCase() === areaName.toLowerCase());
+    const emoji = z?.emoji || '📍';
     const o = document.createElement('option');
-    o.value = z.nome;
-    o.textContent = (z.emoji ? z.emoji + ' ' : '') + z.nome;
+    o.value = areaName;
+    o.textContent = emoji + ' ' + areaName;
     sel.appendChild(o);
   });
+
+  // Ripristina la selezione precedente se ancora valida
   if ([...sel.options].find(o => o.value === prev)) sel.value = prev;
 }
 
@@ -1535,7 +1551,7 @@ async function addDevice() {
     if (error) throw error;
     await pullApparecchi();
     document.getElementById('new-name').value='';
-    renderSetup(); renderDevices();
+    renderSetup(); renderDevices(); renderAreaFilterOptions();
     showToast(`${name} aggiunto`,'success');
   } catch(e) { showToast('Errore: '+e.message,'error'); }
 }
@@ -1549,7 +1565,7 @@ async function deleteDevice(i) {
     const { error } = await sb.from('apparecchi').delete().eq('id', dev.id);
     if (error) throw error;
     await pullApparecchi();
-    renderSetup(); renderZoneSetup(); renderDevices();
+    renderSetup(); renderZoneSetup(); renderDevices(); renderAreaFilterOptions();
     showToast(`${dev.name} rimosso`,'success');
   } catch(e) { showToast('Errore: '+e.message,'error'); }
 }
