@@ -90,45 +90,247 @@
       </div>
     </div>
 
-    <!-- Toolbar -->
-    <div class="flex flex-col sm:flex-row gap-2 mb-4">
-      <input id="search" placeholder="Cerca ristorante, email, telefono…" oninput="renderTable()"
-             class="flex-1 px-3 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:border-blue-400">
-      <select id="filter-stato" onchange="renderTable()"
-              class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
-        <option value="all">Tutti gli stati</option>
-        <option value="attivo">Solo attivi</option>
-        <option value="in_scadenza">In scadenza (≤7gg)</option>
-        <option value="scaduto">Solo scaduti</option>
-      </select>
-      <button onclick="openCreateModal()"
-              class="px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold transition whitespace-nowrap">
-        + Nuovo Cliente
+    <!-- Nav pills -->
+    <div class="flex flex-wrap gap-2 mb-5">
+      <button onclick="setView('clients',this)"
+              class="nav-pill bg-slate-800 text-white nav-pill-active px-4 py-2 rounded-full text-sm font-bold transition">
+        👥 Clienti
+      </button>
+      <button onclick="setView('esp-log',this)"
+              class="nav-pill bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-full text-sm font-bold transition hover:bg-slate-50">
+        📡 Log ESP
+      </button>
+      <button onclick="setView('audit',this)"
+              class="nav-pill bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-full text-sm font-bold transition hover:bg-slate-50">
+        📋 Audit Log
+      </button>
+      <button onclick="setView('trash',this)"
+              class="nav-pill bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-full text-sm font-bold transition hover:bg-slate-50">
+        🗑 Cestino
       </button>
     </div>
 
-    <!-- Tabella -->
-    <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="bg-slate-50 border-b border-slate-200">
-            <tr class="text-left">
-              <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Ristorante</th>
-              <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden md:table-cell">Email</th>
-              <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Piano</th>
-              <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Scadenza</th>
-              <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Stato</th>
-              <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Azioni</th>
-            </tr>
-          </thead>
-          <tbody id="clienti-body">
-            <tr><td colspan="6" class="p-8 text-center text-slate-400 text-sm">Caricamento…</td></tr>
-          </tbody>
-        </table>
+    <!-- ═══ VIEW: Clienti ═══ -->
+    <div id="view-clients">
+      <!-- Toolbar -->
+      <div class="flex flex-col sm:flex-row gap-2 mb-4">
+        <input id="search" placeholder="Cerca ristorante, email, telefono…" oninput="renderTable()"
+               class="flex-1 px-3 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:border-blue-400">
+        <select id="filter-stato" onchange="renderTable()"
+                class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
+          <option value="all">Tutti gli stati</option>
+          <option value="attivo">Solo attivi</option>
+          <option value="in_scadenza">In scadenza (≤7gg)</option>
+          <option value="scaduto">Solo scaduti</option>
+        </select>
+        <button onclick="openCreateModal()"
+                class="px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold transition whitespace-nowrap">
+          + Nuovo Cliente
+        </button>
+      </div>
+
+      <!-- Tabella clienti -->
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 border-b border-slate-200">
+              <tr class="text-left">
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Ristorante</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden md:table-cell">Email</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Piano</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pausa</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Scadenza</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Stato</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Azioni</th>
+              </tr>
+            </thead>
+            <tbody id="clienti-body">
+              <tr><td colspan="7" class="p-8 text-center text-slate-400 text-sm">Caricamento…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p id="footer-info" class="text-xs text-slate-400 mt-3 text-right"></p>
+    </div>
+
+    <!-- ═══ VIEW: Log ESP ═══ -->
+    <div id="view-esp-log" class="hidden">
+      <div class="bg-white border border-slate-200 rounded-lg p-4 mb-4">
+        <h2 class="font-bold text-slate-800 mb-3">📡 Log ricezione dati ESP32</h2>
+        <div class="flex flex-col sm:flex-row gap-2 mb-3">
+          <select id="esp-log-client"
+                  class="flex-1 px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
+            <option value="">— Seleziona cliente —</option>
+          </select>
+          <select id="esp-log-period"
+                  class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
+            <option value="1">Ultime 24 ore</option>
+            <option value="7" selected>Ultimi 7 giorni</option>
+            <option value="30">Ultimi 30 giorni</option>
+            <option value="90">Ultimi 90 giorni</option>
+          </select>
+          <button onclick="loadEspLog()"
+                  class="px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold whitespace-nowrap">
+            Carica
+          </button>
+          <button onclick="exportEspLogCSV()"
+                  class="px-4 py-2 rounded-md border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-bold whitespace-nowrap">
+            ⬇ CSV
+          </button>
+        </div>
+        <div class="flex justify-between items-center">
+          <span id="esp-log-count" class="text-xs text-slate-400"></span>
+          <label class="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+            <input type="checkbox" id="esp-log-anomaly-only" onchange="renderEspLogTable()" class="rounded">
+            Solo anomalie
+          </label>
+        </div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 border-b border-slate-200">
+              <tr class="text-left">
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Data / Ora ricezione</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Apparecchio</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Temperatura</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tipo</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Stato</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Token device</th>
+              </tr>
+            </thead>
+            <tbody id="esp-log-body">
+              <tr><td colspan="6" class="p-8 text-center text-slate-400 text-sm">Seleziona un cliente e clicca Carica</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <p id="footer-info" class="text-xs text-slate-400 mt-3 text-right"></p>
+    <!-- ═══ VIEW: Audit Log ═══ -->
+    <div id="view-audit" class="hidden">
+      <div class="bg-white border border-slate-200 rounded-lg p-4 mb-4">
+        <h2 class="font-bold text-slate-800 mb-3">📋 Audit Log operazioni</h2>
+        <div class="flex flex-col sm:flex-row gap-2 mb-3">
+          <select id="audit-client"
+                  class="flex-1 px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
+            <option value="">Tutti i clienti</option>
+          </select>
+          <select id="audit-period"
+                  class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
+            <option value="1">Ultime 24 ore</option>
+            <option value="7" selected>Ultimi 7 giorni</option>
+            <option value="30">Ultimi 30 giorni</option>
+            <option value="90">Ultimi 90 giorni</option>
+          </select>
+          <select id="audit-table"
+                  class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
+            <option value="">Tutte le tabelle</option>
+            <option value="temperature">temperature</option>
+            <option value="azioni_correttive">azioni_correttive</option>
+            <option value="firme">firme</option>
+            <option value="apparecchi">apparecchi</option>
+          </select>
+          <select id="audit-op"
+                  class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
+            <option value="">Tutte le operazioni</option>
+            <option value="INSERT">INSERT</option>
+            <option value="UPDATE">UPDATE</option>
+            <option value="DELETE">DELETE</option>
+            <option value="SOFT_DELETE">SOFT_DELETE</option>
+            <option value="RESTORE">RESTORE</option>
+          </select>
+          <button onclick="loadAudit()"
+                  class="px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold whitespace-nowrap">
+            Carica
+          </button>
+        </div>
+        <div class="flex justify-between items-center">
+          <span id="audit-count" class="text-xs text-slate-400"></span>
+          <div class="flex gap-2">
+            <button onclick="exportAuditCSV()"
+                    class="px-3 py-1.5 rounded-md border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold">
+              ⬇ CSV
+            </button>
+            <button onclick="clearAudit()"
+                    class="px-3 py-1.5 rounded-md border border-red-200 hover:bg-red-50 text-red-700 text-xs font-bold">
+              🗑 Svuota log cliente
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 border-b border-slate-200">
+              <tr class="text-left">
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Data / Ora</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Utente</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tabella</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Operazione</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Dettagli</th>
+              </tr>
+            </thead>
+            <tbody id="audit-body">
+              <tr><td colspan="5" class="p-8 text-center text-slate-400 text-sm">Seleziona filtri e clicca Carica</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ VIEW: Cestino / Ripristino ═══ -->
+    <div id="view-trash" class="hidden">
+      <div class="bg-white border border-slate-200 rounded-lg p-4 mb-4">
+        <h2 class="font-bold text-slate-800 mb-1">🗑 Cestino — Ripristino registrazioni</h2>
+        <p class="text-xs text-slate-500 mb-3">Qui trovi le registrazioni eliminate dall'utente tramite soft-delete. Puoi ripristinarle singolarmente o svuotare definitivamente il cestino.</p>
+        <div class="flex flex-col sm:flex-row gap-2 mb-3">
+          <select id="trash-client"
+                  class="flex-1 px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
+            <option value="">— Seleziona cliente —</option>
+          </select>
+          <select id="trash-table"
+                  class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
+            <option value="">Tutte le tabelle</option>
+            <option value="temperature">temperature</option>
+            <option value="azioni_correttive">azioni_correttive</option>
+            <option value="firme">firme</option>
+          </select>
+          <button onclick="loadTrash()"
+                  class="px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold whitespace-nowrap">
+            Carica
+          </button>
+        </div>
+        <div class="flex justify-between items-center">
+          <span id="trash-count" class="text-xs text-slate-400"></span>
+          <button onclick="clearTrash()"
+                  class="px-3 py-1.5 rounded-md border border-red-300 hover:bg-red-50 text-red-700 text-xs font-bold">
+            ☠ Svuota cestino definitivamente
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 border-b border-slate-200">
+              <tr class="text-left">
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Eliminato il</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Record</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Azione</th>
+              </tr>
+            </thead>
+            <tbody id="trash-body">
+              <tr><td colspan="3" class="p-8 text-center text-slate-400 text-sm">Seleziona un cliente e clicca Carica</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -269,12 +471,23 @@
       </div>
       <div>
         <label class="text-xs font-bold text-slate-600 block mb-1">Piano</label>
-        <select id="ef-piano" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white">
+        <select id="ef-piano" onchange="toggleWaNotifTipo()" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white">
           <option value="14.99_basic">Basic 14.99€</option>
           <option value="24.99_standard">Standard 24.99€</option>
           <option value="34.99_pro">Pro 34.99€</option>
           <option value="44.99_business">Business 44.99€</option>
         </select>
+      </div>
+      <div id="ef-wa-tipo-block" style="display:none">
+        <label class="text-xs font-bold text-slate-600 block mb-1">Tipo notifica WhatsApp</label>
+        <select id="ef-wa-notif-tipo" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white">
+          <option value="solo_messaggio">Solo messaggio</option>
+          <option value="entrambi">Messaggio + Chiamata</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs font-bold text-slate-600 block mb-1">Data scadenza</label>
+        <input id="ef-scadenza" type="date" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
       </div>
       <div>
         <label class="text-xs font-bold text-slate-600 block mb-1">Note interne (visibili solo a te)</label>
@@ -364,6 +577,6 @@
 <!-- Toast -->
 <div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-md text-white text-sm font-medium shadow-lg z-50"></div>
 
-<script src="admin.js?v=11"></script>
+<script src="admin.js?v=12"></script>
 </body>
 </html>

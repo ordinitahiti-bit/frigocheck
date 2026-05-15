@@ -1,6 +1,8 @@
 // ════════════════════════════════════════════════════════════════
 // HACCP Pro · Admin Dashboard
 // Versione con mapping sonde ESP32 → apparecchi
+// + Log ricezione ESP per cliente
+// + Cestino / ripristino registrazioni
 // ════════════════════════════════════════════════════════════════
 
 const SUPABASE_URL  = 'https://nmpbrjnmsybpzwhtsola.supabase.co';
@@ -592,19 +594,25 @@ function setView(name, btn) {
   });
   btn.classList.add('bg-slate-800','text-white','nav-pill-active');
   btn.classList.remove('bg-white','border','border-slate-300','text-slate-700');
-  document.getElementById('view-clients').classList.add('hidden');
-  document.getElementById('view-audit').classList.add('hidden');
-  document.getElementById('view-trash').classList.add('hidden');
-  document.getElementById('view-' + name).classList.remove('hidden');
-  if (name === 'audit') populateClientSelect('audit-client');
-  if (name === 'trash') populateClientSelect('trash-client');
+  ['clients','audit','trash','esp-log'].forEach(v => {
+    const el = document.getElementById('view-' + v);
+    if (el) el.classList.add('hidden');
+  });
+  const target = document.getElementById('view-' + name);
+  if (target) target.classList.remove('hidden');
+  if (name === 'audit')   populateClientSelect('audit-client');
+  if (name === 'trash')   populateClientSelect('trash-client');
+  if (name === 'esp-log') populateClientSelect('esp-log-client');
 }
 
 function populateClientSelect(selectId) {
   const sel = document.getElementById(selectId);
   if (!sel) return;
   const current = sel.value;
-  sel.innerHTML = (selectId === 'trash-client' ? '<option value="">Seleziona cliente</option>' : '<option value="">Tutti i clienti</option>');
+  const isTrashOrLog = selectId === 'trash-client' || selectId === 'esp-log-client';
+  sel.innerHTML = isTrashOrLog
+    ? '<option value="">— Seleziona cliente —</option>'
+    : '<option value="">Tutti i clienti</option>';
   allClients.forEach(c => {
     const opt = document.createElement('option');
     opt.value = c.azienda_id;
@@ -612,6 +620,114 @@ function populateClientSelect(selectId) {
     sel.appendChild(opt);
   });
   if (current) sel.value = current;
+}
+
+// ========== LOG ESP32 ==========
+let lastEspLogResults = [];
+
+async function loadEspLog() {
+  const azienda_id = document.getElementById('esp-log-client').value;
+  if (!azienda_id) { showToast('Seleziona un cliente', 'warning'); return; }
+  const body = document.getElementById('esp-log-body');
+  body.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-400 text-sm">Caricamento…</td></tr>';
+  const days = parseInt(document.getElementById('esp-log-period').value) || 7;
+  try {
+    const r = await callAdminApi('list_ingest_log', {
+      azienda_id,
+      from: new Date(Date.now() - days * 86400 * 1000).toISOString(),
+      limit: 500
+    });
+    lastEspLogResults = r.logs || [];
+    renderEspLogTable();
+    document.getElementById('esp-log-count').textContent =
+      `${lastEspLogResults.length} ricezioni trovate (limite 500)`;
+  } catch(e) {
+    body.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-red-500 text-sm">${escapeHtml(e.message)}</td></tr>`;
+  }
+}
+
+function renderEspLogTable() {
+  const body = document.getElementById('esp-log-body');
+  const onlyAnomalies = document.getElementById('esp-log-anomaly-only')?.checked;
+
+  if (!lastEspLogResults.length) {
+    body.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-400 text-sm">Nessun dato ricevuto nel periodo selezionato</td></tr>';
+    return;
+  }
+
+  const rows = lastEspLogResults.filter(l => {
+    if (!onlyAnomalies) return true;
+    if (l.stato === 'SENSOR_ERR') return true;
+    const soglia = l.tipo === 'gelo' ? -18 : 4;
+    return parseFloat(l.temperatura) > soglia;
+  });
+
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-400 text-sm">Nessuna anomalia nel periodo — tutto nella norma ✓</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(l => {
+    // Data ricezione: usa received_at se disponibile, altrimenti created_at o data+ora
+    const ts = l.received_at || l.created_at || (l.data && l.ora ? l.data + 'T' + l.ora : null);
+    const dt = ts ? new Date(ts).toLocaleString('it-IT') : (l.data + ' ' + (l.ora || ''));
+
+    const isSensorErr = l.stato === 'SENSOR_ERR';
+    const temp = parseFloat(l.temperatura);
+    const soglia = l.tipo === 'gelo' ? -18 : 4;
+    const isAnomaly = !isSensorErr && !isNaN(temp) && temp > soglia;
+
+    const tempClass = isSensorErr
+      ? 'text-slate-400 italic'
+      : isAnomaly
+        ? 'text-red-600 font-bold'
+        : 'text-green-700 font-semibold';
+    const tempStr = isSensorErr
+      ? 'SENSOR_ERR'
+      : isNaN(temp) ? '—' : temp.toFixed(1) + '°C';
+
+    const statoLabel = isSensorErr
+      ? '<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[11px] font-bold">SENSOR_ERR</span>'
+      : isAnomaly
+        ? '<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-[11px] font-bold">⚠ anomalia</span>'
+        : '<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[11px] font-bold">✓ ok</span>';
+
+    const tipoLabel = l.tipo === 'gelo' ? '🧊 gelo' : '❄️ frigo';
+    const tokenShort = l.device_token ? l.device_token.substring(0, 8) + '…' : '—';
+
+    return `<tr class="border-b border-slate-100 hover:bg-slate-50">
+      <td class="py-2 px-3 text-xs text-slate-600 whitespace-nowrap">${escapeHtml(dt)}</td>
+      <td class="py-2 px-3 text-sm font-medium text-slate-800">${escapeHtml(l.apparecchio || '—')}</td>
+      <td class="py-2 px-3 text-sm ${tempClass}">${tempStr}</td>
+      <td class="py-2 px-3 text-xs text-slate-500">${tipoLabel}</td>
+      <td class="py-2 px-3">${statoLabel}</td>
+      <td class="py-2 px-3 text-[10px] font-mono text-slate-400 hidden lg:table-cell" title="${escapeHtml(l.device_token || '')}">${tokenShort}</td>
+    </tr>`;
+  }).join('');
+}
+
+function exportEspLogCSV() {
+  if (!lastEspLogResults.length) { showToast('Nessun dato da esportare', 'warning'); return; }
+  const cliente = allClients.find(c => c.azienda_id === document.getElementById('esp-log-client').value);
+  const nomeFile = cliente ? cliente.nome_ristorante.replace(/[^a-z0-9]/gi, '_') : 'esp_log';
+  const headers = ['Data/Ora ricezione','Apparecchio','Temperatura','Tipo','Stato','Token device','Azienda ID'];
+  const rows = lastEspLogResults.map(l => {
+    const ts = l.received_at || l.created_at || (l.data && l.ora ? l.data + 'T' + l.ora : '');
+    const dt = ts ? new Date(ts).toLocaleString('it-IT') : '';
+    const isSensorErr = l.stato === 'SENSOR_ERR';
+    const temp = parseFloat(l.temperatura);
+    const soglia = l.tipo === 'gelo' ? -18 : 4;
+    const stato = isSensorErr ? 'SENSOR_ERR' : (!isNaN(temp) && temp > soglia) ? 'anomalia' : 'ok';
+    return [dt, l.apparecchio || '', isNaN(temp) ? '' : temp.toFixed(1), l.tipo || '', stato, l.device_token || '', l.azienda_id || ''];
+  });
+  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${nomeFile}_esp_log_${Date.now()}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('CSV scaricato', 'success');
 }
 
 // ========== AUDIT LOG ==========
@@ -635,7 +751,7 @@ async function loadAudit() {
     renderAuditTable();
     document.getElementById('audit-count').textContent = `${lastAuditResults.length} record (limite ${r.limit})`;
   } catch(e) {
-    body.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500 text-sm">${e.message}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500 text-sm">${escapeHtml(e.message)}</td></tr>`;
   }
 }
 
@@ -648,13 +764,21 @@ function renderAuditTable() {
     const opCls = opColors[l.operation] || 'bg-slate-100 text-slate-700';
     let dettagli = '';
     if (l.operation === 'UPDATE' && l.changed && l.changed.length > 0) {
-      dettagli = '<details><summary class="text-xs">' + escapeHtml(l.changed.join(', ')) + '</summary><pre class="text-[10px] mt-1 p-1 bg-slate-50 rounded">' + escapeHtml(JSON.stringify({ old: l.old_data, new: l.new_data }, null, 1)) + '</pre></details>';
+      dettagli = '<details><summary class="text-xs cursor-pointer">' + escapeHtml(l.changed.join(', ')) + '</summary><pre class="text-[10px] mt-1 p-1 bg-slate-50 rounded overflow-auto max-h-32">' + escapeHtml(JSON.stringify({ old: l.old_data, new: l.new_data }, null, 1)) + '</pre></details>';
     } else if (l.operation === 'DELETE' || l.operation === 'SOFT_DELETE') {
-      dettagli = '<details><summary class="text-xs">vedi dati</summary><pre class="text-[10px] mt-1 p-1 bg-slate-50 rounded">' + escapeHtml(JSON.stringify(l.old_data, null, 1)) + '</pre></details>';
+      dettagli = '<details><summary class="text-xs cursor-pointer">vedi dati eliminati</summary><pre class="text-[10px] mt-1 p-1 bg-slate-50 rounded overflow-auto max-h-32">' + escapeHtml(JSON.stringify(l.old_data, null, 1)) + '</pre></details>';
     } else if (l.operation === 'INSERT') {
-      dettagli = '<details><summary class="text-xs">vedi dati</summary><pre class="text-[10px] mt-1 p-1 bg-slate-50 rounded">' + escapeHtml(JSON.stringify(l.new_data, null, 1)) + '</pre></details>';
+      dettagli = '<details><summary class="text-xs cursor-pointer">vedi dati inseriti</summary><pre class="text-[10px] mt-1 p-1 bg-slate-50 rounded overflow-auto max-h-32">' + escapeHtml(JSON.stringify(l.new_data, null, 1)) + '</pre></details>';
+    } else if (l.operation === 'RESTORE') {
+      dettagli = '<details><summary class="text-xs cursor-pointer">vedi dati ripristinati</summary><pre class="text-[10px] mt-1 p-1 bg-slate-50 rounded overflow-auto max-h-32">' + escapeHtml(JSON.stringify(l.new_data, null, 1)) + '</pre></details>';
     }
-    return `<tr><td class="py-2 px-3 text-xs">${dt}</td><td class="py-2 px-3 text-xs">${escapeHtml(l.user_email || '—')}<br><span class="text-slate-400">${escapeHtml(l.user_role || '')}</span></td><td class="py-2 px-3"><code class="text-xs bg-slate-100 px-1 rounded">${escapeHtml(l.table_name)}</code></td><td class="py-2 px-3"><span class="${opCls} px-2 py-0.5 rounded-full text-[11px] font-bold">${l.operation}</span></td><td class="py-2 px-3">${dettagli}</td></tr>`;
+    return `<tr class="border-b border-slate-100 hover:bg-slate-50">
+      <td class="py-2 px-3 text-xs whitespace-nowrap">${dt}</td>
+      <td class="py-2 px-3 text-xs">${escapeHtml(l.user_email || '—')}<br><span class="text-slate-400">${escapeHtml(l.user_role || '')}</span></td>
+      <td class="py-2 px-3"><code class="text-xs bg-slate-100 px-1 rounded">${escapeHtml(l.table_name)}</code></td>
+      <td class="py-2 px-3"><span class="${opCls} px-2 py-0.5 rounded-full text-[11px] font-bold">${l.operation}</span></td>
+      <td class="py-2 px-3">${dettagli}</td>
+    </tr>`;
   }).join('');
 }
 
@@ -704,25 +828,49 @@ async function loadTrash() {
     renderTrashTable();
     document.getElementById('trash-count').textContent = `${lastTrashResults.length} record nel cestino`;
   } catch(e) {
-    body.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-red-500 text-sm">${e.message}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-red-500 text-sm">${escapeHtml(e.message)}</td></tr>`;
   }
 }
 
 function renderTrashTable() {
   const body = document.getElementById('trash-body');
-  if (!lastTrashResults.length) { body.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-slate-400 text-sm">Cestino vuoto</td></tr>'; return; }
+  if (!lastTrashResults.length) {
+    body.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-slate-400 text-sm">Cestino vuoto ✓</td></tr>';
+    return;
+  }
   body.innerHTML = lastTrashResults.map(r => {
     const dl = r.deleted_at ? new Date(r.deleted_at).toLocaleString('it-IT') : '—';
     let summary = '';
-    if (lastTrashTable === 'temperature') summary = `<b>${escapeHtml(r.apparecchio || '')}</b> · ${r.temp}°C · ${escapeHtml(r.data || '')} ${escapeHtml(r.ora || '')}`;
-    else if (lastTrashTable === 'azioni_correttive') summary = `<b>${escapeHtml(r.apparecchio || '')}</b> · ${escapeHtml(r.data_anomalia || '')} ${escapeHtml(r.ora_anomalia || '')}`;
-    else if (lastTrashTable === 'firme') summary = `<b>${escapeHtml(r.operatore || '')}</b> · ${escapeHtml(r.data || '')} ${escapeHtml(r.ora || '')}`;
-    return `<tr><td class="py-2 px-3 text-xs">${dl}</td><td class="py-2 px-3 text-sm">${summary}</td><td class="py-2 px-3 text-right"><button onclick="doRestore('${r.id}')" class="px-3 py-1 rounded-md bg-green-600 hover:bg-green-700 text-white text-xs font-bold">↩ Ripristina</button></td></tr>`;
+    let tableBadge = '';
+    if (lastTrashTable === 'temperature') {
+      tableBadge = '<span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold mr-1.5">temp</span>';
+      const temp = parseFloat(r.temperatura);
+      const tempStr = isNaN(temp) ? '—' : temp.toFixed(1) + '°C';
+      summary = `${tableBadge}<b>${escapeHtml(r.apparecchio || '')}</b> · ${tempStr} · ${escapeHtml(r.data || '')} ${escapeHtml(r.ora || '')}`;
+    } else if (lastTrashTable === 'azioni_correttive') {
+      tableBadge = '<span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold mr-1.5">azione</span>';
+      summary = `${tableBadge}<b>${escapeHtml(r.apparecchio || '')}</b> · ${escapeHtml(r.data_anomalia || '')} ${escapeHtml(r.ora_anomalia || '')}`;
+    } else if (lastTrashTable === 'firme') {
+      tableBadge = '<span class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold mr-1.5">firma</span>';
+      summary = `${tableBadge}<b>${escapeHtml(r.operatore || '')}</b> · ${escapeHtml(r.data || '')} ${escapeHtml(r.ora || '')}`;
+    } else {
+      summary = `<pre class="text-[10px] font-mono">${escapeHtml(JSON.stringify(r, null, 1).substring(0, 120))}…</pre>`;
+    }
+    return `<tr class="border-b border-slate-100 hover:bg-slate-50">
+      <td class="py-2 px-3 text-xs text-slate-500 whitespace-nowrap">${dl}</td>
+      <td class="py-2 px-3 text-sm">${summary}</td>
+      <td class="py-2 px-3 text-right">
+        <button onclick="doRestore('${r.id}')"
+                class="px-3 py-1 rounded-md bg-green-600 hover:bg-green-700 text-white text-xs font-bold">
+          ↩ Ripristina
+        </button>
+      </td>
+    </tr>`;
   }).join('');
 }
 
 async function doRestore(id) {
-  if (!confirm('Ripristinare questo record?')) return;
+  if (!confirm('Ripristinare questo record? Tornerà visibile all\'utente.')) return;
   try {
     await callAdminApi('restore_record', { table_name: lastTrashTable, id });
     showToast('✓ Record ripristinato', 'success');
