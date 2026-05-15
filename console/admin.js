@@ -314,7 +314,7 @@ async function generateNewToken(aziendaId) {
       ? crypto.randomUUID()
       : ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
           (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c/4).toString(16));
-    await callAdminApi('upsert_device_token', { azienda_id: aziendaId, apparecchio_id: null, token, enabled: true });
+    await callAdminApi('upsert_device_token', { azienda_id: aziendaId, token, enabled: true });
     showToast('Nuovo token generato', 'success');
     const userId = allClients.find(c => c.azienda_id === aziendaId)?.user_id;
     if (userId) openESPModal(userId, aziendaId);
