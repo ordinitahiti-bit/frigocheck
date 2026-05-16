@@ -840,17 +840,20 @@ function renderTrashTable() {
   }
   body.innerHTML = lastTrashResults.map(r => {
     const dl = r.deleted_at ? new Date(r.deleted_at).toLocaleString('it-IT') : '—';
+    // FIX: usa r._table (campo per-record) invece di lastTrashTable (variabile globale)
+    // così funziona sia quando si filtra per tabella specifica sia con "tutte"
+    const tbl = r._table || lastTrashTable;
     let summary = '';
     let tableBadge = '';
-    if (lastTrashTable === 'temperature') {
+    if (tbl === 'temperature') {
       tableBadge = '<span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold mr-1.5">temp</span>';
       const temp = parseFloat(r.temperatura);
       const tempStr = isNaN(temp) ? '—' : temp.toFixed(1) + '°C';
       summary = `${tableBadge}<b>${escapeHtml(r.apparecchio || '')}</b> · ${tempStr} · ${escapeHtml(r.data || '')} ${escapeHtml(r.ora || '')}`;
-    } else if (lastTrashTable === 'azioni_correttive') {
+    } else if (tbl === 'azioni_correttive') {
       tableBadge = '<span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold mr-1.5">azione</span>';
       summary = `${tableBadge}<b>${escapeHtml(r.apparecchio || '')}</b> · ${escapeHtml(r.data_anomalia || '')} ${escapeHtml(r.ora_anomalia || '')}`;
-    } else if (lastTrashTable === 'firme') {
+    } else if (tbl === 'firme') {
       tableBadge = '<span class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold mr-1.5">firma</span>';
       summary = `${tableBadge}<b>${escapeHtml(r.operatore || '')}</b> · ${escapeHtml(r.data || '')} ${escapeHtml(r.ora || '')}`;
     } else {
@@ -860,7 +863,7 @@ function renderTrashTable() {
       <td class="py-2 px-3 text-xs text-slate-500 whitespace-nowrap">${dl}</td>
       <td class="py-2 px-3 text-sm">${summary}</td>
       <td class="py-2 px-3 text-right">
-        <button onclick="doRestore('${r.id}')"
+        <button onclick="doRestore('${r.id}', '${tbl}')"
                 class="px-3 py-1 rounded-md bg-green-600 hover:bg-green-700 text-white text-xs font-bold">
           ↩ Ripristina
         </button>
@@ -869,10 +872,13 @@ function renderTrashTable() {
   }).join('');
 }
 
-async function doRestore(id) {
+async function doRestore(id, tableName) {
+  // FIX: riceve la tabella come parametro diretto invece di leggere lastTrashTable
+  // così funziona correttamente anche con record misti da tabelle diverse
+  const tbl = tableName || lastTrashTable;
   if (!confirm('Ripristinare questo record? Tornerà visibile all\'utente.')) return;
   try {
-    await callAdminApi('restore_record', { table_name: lastTrashTable, id });
+    await callAdminApi('restore_record', { table_name: tbl, id });
     showToast('✓ Record ripristinato', 'success');
     await loadTrash();
   } catch(e) { showToast('Errore: ' + e.message, 'error'); }
