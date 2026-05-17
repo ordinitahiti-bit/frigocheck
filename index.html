@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HACCP Pro Cloud</title>
+<title>FrigoCheck</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -53,7 +53,7 @@
 
 <!-- LOGIN -->
 <div id="login-screen">
-  <img src="haccp.png" alt="HACCP Pro" class="login-logo-img">
+  <img src="haccp.png" alt="FrigoCheck" class="login-logo-img">
   <p class="login-sub">Accedi al registro temperature</p>
   <div class="login-card">
     <div class="field">
@@ -76,7 +76,7 @@
       <a href="#" onclick="doRecoverPassword();return false;" style="color:#7dd3fc;font-size:12px;text-decoration:none;">Password dimenticata?</a>
     </div>
   </div>
-  <div class="login-foot">HACCP Pro Cloud · Reg. CE 852/2004</div>
+  <div class="login-foot">FrigoCheck · Sistema monitoraggio temperature</div>
 </div>
 
 <!-- RESET PASSWORD -->
@@ -112,7 +112,7 @@
 <!-- LOADING -->
 <div id="loading-screen">
   <div class="loader"></div>
-  <h2>HACCP Pro Cloud</h2>
+  <h2>FrigoCheck</h2>
   <p id="loading-msg">Sincronizzazione in corso...</p>
 </div>
 
@@ -123,12 +123,14 @@
     <h2>Informativa e Dichiarazione di Responsabilità</h2>
     <p class="terms-sub">Leggi attentamente prima di accedere al servizio</p>
     <div class="terms-text">
-      <p style="margin-bottom:10px;">Benvenuto nell'applicazione per la gestione delle rilevazioni termometriche. La presente applicazione è progettata come strumento di supporto tecnico per la redazione e l'archiviazione della documentazione relativa al piano di autocontrollo, in conformità ai principi del Sistema HACCP (Hazard Analysis and Critical Control Points) e ai sensi del <strong>Regolamento (CE) n. 852/2004</strong>.</p>
+      <p style="margin-bottom:10px;">Benvenuto in <strong>FrigoCheck</strong>, sistema di supporto al monitoraggio e controllo delle temperature dei frigoriferi e degli apparecchi refrigeranti. L'applicazione consente la raccolta, l'archiviazione e la stampa periodica dello storico delle rilevazioni di temperatura.</p>
+      <p style="margin-bottom:10px;">FrigoCheck è uno <strong>strumento di supporto operativo</strong> e <strong>non si sostituisce ai protocolli HACCP</strong> né alle procedure di autocontrollo aziendale previste dalla normativa vigente. Le rilevazioni effettuate tramite l'applicazione non sostituiscono in alcun modo le misurazioni eseguite con sonde certificate, ove queste siano richieste dalla normativa applicabile all'attività.</p>
+      <p style="margin-bottom:10px;">La responsabilità della sicurezza alimentare e della conformità ai protocolli HACCP resta in capo al Responsabile dell'attività, che resta l'unico garante dinanzi alle autorità competenti.</p>
       <p style="margin-bottom:8px;">L'utente, accedendo al servizio, prende atto e accetta quanto segue:</p>
 
       <div class="terms-section">
         <div class="terms-section-title">📋 Ruolo dell'Applicativo</div>
-        Il software funge esclusivamente da <strong>supporto digitale</strong> per la raccolta dati. L'utilizzo dell'applicazione non sostituisce in alcun modo la figura del Responsabile dell'Industria Alimentare (RIA) o del Responsabile del Piano di Autocontrollo, i quali restano gli unici garanti della sicurezza alimentare dinanzi alle autorità competenti.
+        Il software funge esclusivamente da <strong>supporto digitale</strong> per la raccolta e l'archiviazione dei dati di temperatura. L'utilizzo dell'applicazione non sostituisce in alcun modo la figura del Responsabile dell'attività, il quale resta l'unico garante della corretta gestione operativa e della sicurezza alimentare dinanzi alle autorità competenti.
       </div>
 
       <div class="terms-section">
@@ -171,7 +173,7 @@
 <div class="topbar">
   <div class="topbar-row">
     <div>
-      <h1>HACCP Pro Cloud</h1>
+      <h1>FrigoCheck</h1>
       <p><span class="online-dot"></span><span id="today-date"></span> &nbsp;<span id="operatore-badge" onclick="doLogout()"></span></p>
     </div>
     <span class="top-badge" id="top-badge">—</span>
@@ -215,7 +217,7 @@
     <div style="font-size:22px;flex-shrink:0;">🖨️</div>
     <div style="flex:1;">
       <div style="font-weight:700;font-size:14px;margin-bottom:2px;">Consiglio della settimana</div>
-      <div id="banner-settimanale-sub" style="font-size:11px;opacity:.92;line-height:1.4;">Stampa e firma il registro periodicamente per essere sempre in regola con il Reg. CE 852/2004.</div>
+      <div id="banner-settimanale-sub" style="font-size:11px;opacity:.92;line-height:1.4;">Stampa e firma il registro periodicamente per mantenere lo storico delle temperature sempre archiviato.</div>
     </div>
   </div>
   <div style="display:flex;gap:7px;margin-top:10px;">
@@ -246,7 +248,7 @@
       <h3 style="font-size:19px;font-weight:800;color:#dc2626;margin-bottom:6px;">Registro mensile obbligatorio</h3>
       <p id="blocco-mese-label" style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:6px;font-weight:600;"></p>
       <p style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:20px;">
-        Per continuare a usare l'app devi scaricare il PDF del registro mensile e conservarlo firmato dal responsabile, come previsto dal Reg. CE 852/2004.
+        Per continuare a usare l'app è <strong>obbligatorio</strong> scaricare il PDF del registro del mese precedente e conservarlo firmato dal responsabile. L'archiviazione mensile dello storico delle temperature è parte integrante del servizio.
       </p>
     </div>
     <div style="display:flex;flex-direction:column;gap:10px;">
@@ -383,7 +385,7 @@
     <button class="btn btn-outline" id="btn-only-err" onclick="toggleErrFilter()" style="flex:1;padding:9px;font-size:12px;border-width:1.5px;">Solo anomalie</button>
     <button class="btn btn-success" onclick="exportExcel()" style="flex:1;padding:9px;font-size:12px;">📊 Excel</button>
   </div>
-  <button class="btn btn-pdf" onclick="exportPDF()" style="margin-bottom:11px;padding:12px;font-size:14px;">📄 Genera PDF ufficiale HACCP</button>
+  <button class="btn btn-pdf" onclick="exportPDF()" style="margin-bottom:11px;padding:12px;font-size:14px;">📄 Genera PDF registro mensile</button>
   <div class="card" style="padding:0;overflow:hidden;">
     <div style="max-height:400px;overflow-y:auto;">
       <table class="hist-table">
@@ -458,6 +460,24 @@
 
   <!-- TAB: Anagrafica -->
   <div id="setup-tab-anagrafica" class="setup-tab">
+
+    <div class="section-title" style="margin-top:8px;">⚙️ Modalità di funzionamento</div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+      Configurazione gestita dal fornitore del servizio.
+    </p>
+    <div class="card" style="border-left:3px solid #2563a8;">
+      <div id="modalita-badge" style="display:flex;align-items:center;gap:12px;padding:6px 4px;">
+        <span id="modalita-icon" style="font-size:30px;flex-shrink:0;">🔔</span>
+        <div style="flex:1;">
+          <div id="modalita-titolo" style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Monitoraggio e allarme</div>
+          <div id="modalita-desc" style="font-size:11px;color:var(--text-muted);line-height:1.5;">L'app ti avvisa se le temperature escono dalle soglie. Lo storico è consultabile e il PDF si può scaricare quando vuoi.</div>
+        </div>
+      </div>
+      <p style="font-size:10px;color:var(--text-muted);margin-top:12px;padding-top:10px;border-top:1px solid #e2e8f0;line-height:1.5;opacity:.85;">
+        Per modificare questa impostazione contatta il fornitore del servizio. <strong>FrigoCheck non sostituisce in alcun caso i protocolli HACCP</strong> né le sonde certificate richieste dalla normativa applicabile alla tua attività.
+      </p>
+    </div>
+
     <div class="section-title" style="margin-top:8px;">📋 Dati azienda</div>
     <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
       Verranno usati nelle intestazioni dei documenti ufficiali (PDF, registro, ecc.).
@@ -468,9 +488,9 @@
       <div class="field"><label>P.IVA / C.F.</label><input type="text" id="cfg-piva" placeholder="IT01234567890" oninput="saveCfgLocal()"></div>
       <div class="field"><label>Telefono</label><input type="text" id="cfg-telefono" placeholder="+39 02 1234567" oninput="saveCfgLocal()"></div>
       <div class="field"><label>Email</label><input type="text" id="cfg-email" placeholder="info@tuolocale.it" oninput="saveCfgLocal()"></div>
-      <div class="field"><label>Responsabile HACCP</label><input type="text" id="cfg-responsabile" placeholder="Nome Cognome del responsabile" oninput="saveCfgLocal()"></div>
+      <div class="field"><label>Responsabile</label><input type="text" id="cfg-responsabile" placeholder="Nome Cognome del responsabile" oninput="saveCfgLocal()"></div>
       <div class="field"><label>Numero registrazione sanitaria</label><input type="text" id="cfg-regsanitaria" placeholder="Es: IT 123 CE" oninput="saveCfgLocal()"></div>
-      <div class="field"><label>Data ultima verifica HACCP</label><input type="date" id="cfg-dataverifica" oninput="saveCfgLocal()"></div>
+      <div class="field"><label>Data ultima verifica</label><input type="date" id="cfg-dataverifica" oninput="saveCfgLocal()"></div>
 
       <div id="wa-block">
       <div class="separator" style="margin:14px 0 10px;"></div>
@@ -572,16 +592,17 @@
     <div style="position:sticky;top:0;background:#fff;padding:16px 20px 12px;border-bottom:1px solid #e5e7eb;border-radius:16px 16px 0 0;display:flex;justify-content:space-between;align-items:center;">
       <div>
         <div style="font-size:18px;font-weight:700;color:#1e293b;">⚖️ Informativa e Dichiarazione di Responsabilità</div>
-        <div style="font-size:11px;color:#64748b;margin-top:2px;">Reg. CE 852/2004 · HACCP Pro Cloud</div>
+        <div style="font-size:11px;color:#64748b;margin-top:2px;">FrigoCheck · Sistema monitoraggio temperature</div>
       </div>
       <button onclick="document.getElementById('modal-note-legali').style.display='none'" style="background:#f1f5f9;border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:18px;color:#64748b;display:flex;align-items:center;justify-content:center;">✕</button>
     </div>
     <div style="padding:20px;font-size:12px;line-height:1.7;color:#374151;">
-      <p style="margin-bottom:12px;">Benvenuto nell'applicazione per la gestione delle rilevazioni termometriche. La presente applicazione è progettata come strumento di supporto tecnico per la redazione e l'archiviazione della documentazione relativa al piano di autocontrollo, in conformità ai principi del Sistema HACCP e ai sensi del <strong>Regolamento (CE) n. 852/2004</strong>.</p>
+      <p style="margin-bottom:12px;">Benvenuto in <strong>FrigoCheck</strong>, sistema di supporto al monitoraggio e controllo delle temperature dei frigoriferi e degli apparecchi refrigeranti. L'applicazione consente la raccolta, l'archiviazione e la stampa periodica dello storico delle rilevazioni di temperatura.</p>
+      <p style="margin-bottom:12px;">FrigoCheck è uno <strong>strumento di supporto operativo</strong> e <strong>non si sostituisce ai protocolli HACCP</strong> né alle procedure di autocontrollo aziendale previste dalla normativa vigente. Le rilevazioni effettuate tramite l'applicazione non sostituiscono in alcun modo le misurazioni eseguite con sonde certificate, ove queste siano richieste dalla normativa applicabile all'attività. La responsabilità della sicurezza alimentare e della conformità ai protocolli HACCP resta in capo al Responsabile dell'attività.</p>
 
       <div style="background:#f8fafc;border-left:3px solid #1e40af;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:12px;">
         <div style="font-weight:700;color:#1e293b;margin-bottom:4px;">📋 Ruolo dell'Applicativo</div>
-        Il software funge esclusivamente da <strong>supporto digitale</strong> per la raccolta dati. L'utilizzo dell'applicazione non sostituisce la figura del Responsabile dell'Industria Alimentare (RIA) o del Responsabile del Piano di Autocontrollo, i quali restano gli unici garanti della sicurezza alimentare dinanzi alle autorità competenti.
+        Il software funge esclusivamente da <strong>supporto digitale</strong> per la raccolta e l'archiviazione dei dati di temperatura. L'utilizzo dell'applicazione non sostituisce la figura del Responsabile dell'attività, il quale resta l'unico garante della corretta gestione operativa e della sicurezza alimentare dinanzi alle autorità competenti.
       </div>
 
       <div style="background:#f8fafc;border-left:3px solid #1e40af;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:12px;">
