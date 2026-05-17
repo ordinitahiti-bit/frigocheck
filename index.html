@@ -260,6 +260,45 @@
   </div>
 </div>
 
+<!-- MODALE SCELTA MODALITÀ (onboarding primo accesso) -->
+<div id="modal-scelta-modalita" class="modal-overlay hidden" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);">
+  <div class="modal" style="max-width:440px;border-radius:16px;align-self:center;border-top:5px solid #2563a8;">
+    <div style="text-align:center;padding:6px 0 4px;">
+      <div style="font-size:46px;margin-bottom:8px;">⚙️</div>
+      <h3 style="font-size:19px;font-weight:800;color:var(--navy);margin-bottom:8px;">Come vuoi usare FrigoCheck?</h3>
+      <p style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:18px;">
+        Scegli come vuoi che l'app si comporti. Potrai cambiare questa scelta in qualsiasi momento dalle Impostazioni.
+      </p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button onclick="scegliModalita(false)" style="text-align:left;padding:14px;background:#fff;border:2px solid #e2e8f0;border-radius:12px;cursor:pointer;font-family:inherit;transition:all .15s;" onmouseover="this.style.borderColor='#2563a8';this.style.background='#eff6ff';" onmouseout="this.style.borderColor='#e2e8f0';this.style.background='#fff';">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:22px;">🔔</span>
+          <span style="font-weight:700;font-size:14px;color:var(--navy);">Monitoraggio e allarme</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);line-height:1.5;padding-left:32px;">
+          L'app ti avvisa se le temperature escono dalle soglie. Lo storico è sempre consultabile e puoi scaricare il PDF quando vuoi. Nessun blocco mensile.
+        </div>
+      </button>
+
+      <button onclick="scegliModalita(true)" style="text-align:left;padding:14px;background:#fff;border:2px solid #e2e8f0;border-radius:12px;cursor:pointer;font-family:inherit;transition:all .15s;" onmouseover="this.style.borderColor='#2563a8';this.style.background='#eff6ff';" onmouseout="this.style.borderColor='#e2e8f0';this.style.background='#fff';">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:22px;">📋</span>
+          <span style="font-weight:700;font-size:14px;color:var(--navy);">Monitoraggio + archiviazione mensile</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);line-height:1.5;padding-left:32px;">
+          Come sopra, ma a fine mese l'app ti ricorda — e poi obbliga — a scaricare il PDF del registro per conservarlo firmato. Utile se vuoi tenere uno storico cartaceo archiviato.
+        </div>
+      </button>
+    </div>
+
+    <p style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:14px;line-height:1.5;opacity:.85;">
+      FrigoCheck è uno strumento di supporto operativo e <strong>non si sostituisce ai protocolli HACCP</strong> né alle sonde certificate richieste dalla normativa.
+    </p>
+  </div>
+</div>
+
 <!-- MODALE CONFERMA STAMPA (dopo download PDF in regime normale) -->
 <div id="modal-conferma-stampa" class="modal-overlay hidden">
   <div class="modal" style="max-width:380px;border-radius:14px;align-self:center;">
@@ -463,18 +502,29 @@
 
     <div class="section-title" style="margin-top:8px;">⚙️ Modalità di funzionamento</div>
     <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
-      Configurazione gestita dal fornitore del servizio.
+      Scegli come vuoi che FrigoCheck si comporti.
     </p>
     <div class="card" style="border-left:3px solid #2563a8;">
-      <div id="modalita-badge" style="display:flex;align-items:center;gap:12px;padding:6px 4px;">
-        <span id="modalita-icon" style="font-size:30px;flex-shrink:0;">🔔</span>
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
+        <label class="switch" style="flex-shrink:0;margin-top:2px;">
+          <input type="checkbox" id="cfg-archivio-mensile" onchange="cambiaModalitaArchivio()">
+          <span class="slider"></span>
+        </label>
         <div style="flex:1;">
-          <div id="modalita-titolo" style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Monitoraggio e allarme</div>
-          <div id="modalita-desc" style="font-size:11px;color:var(--text-muted);line-height:1.5;">L'app ti avvisa se le temperature escono dalle soglie. Lo storico è consultabile e il PDF si può scaricare quando vuoi.</div>
+          <div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:3px;">Archiviazione mensile dello storico</div>
+          <div style="font-size:11px;color:var(--text-muted);line-height:1.5;">
+            Se attiva, alla fine di ogni mese l'app ti ricorderà — e poi obbligherà — di scaricare il PDF del registro temperature del mese precedente prima di poter continuare. Utile se vuoi tenere uno storico cartaceo firmato delle rilevazioni.
+          </div>
         </div>
       </div>
-      <p style="font-size:10px;color:var(--text-muted);margin-top:12px;padding-top:10px;border-top:1px solid #e2e8f0;line-height:1.5;opacity:.85;">
-        Per modificare questa impostazione contatta il fornitore del servizio. <strong>FrigoCheck non sostituisce in alcun caso i protocolli HACCP</strong> né le sonde certificate richieste dalla normativa applicabile alla tua attività.
+      <div id="archivio-mensile-info-on" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:9px 12px;font-size:11px;color:#1e40af;line-height:1.5;">
+        ✓ <strong>Attiva:</strong> riceverai promemoria settimanali, un avviso l'ultimo giorno del mese e dal 1° del mese successivo l'app sarà bloccata finché non scarichi e archivi il PDF.
+      </div>
+      <div id="archivio-mensile-info-off" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px;font-size:11px;color:#475569;line-height:1.5;">
+        ✓ <strong>Disattiva:</strong> FrigoCheck funziona come sistema di monitoraggio e allarme. Lo storico è sempre consultabile e puoi generare il PDF on-demand quando vuoi dalla sezione Report.
+      </div>
+      <p style="font-size:10px;color:var(--text-muted);margin-top:10px;line-height:1.5;opacity:.85;">
+        Puoi cambiare questa scelta in qualsiasi momento. <strong>FrigoCheck non sostituisce in alcun caso i protocolli HACCP</strong> né le sonde certificate richieste dalla normativa applicabile alla tua attività.
       </p>
     </div>
 

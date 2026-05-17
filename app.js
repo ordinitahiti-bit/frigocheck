@@ -81,6 +81,7 @@ async function init() {
     renderAll();
     await checkTermsAndShow();
     setTimeout(checkStampaBanner, 2000);
+    mostraSceltaModalitaSeNecessario();
     registraServiceWorkerNotifiche();
   } else {
     hideLoading();
@@ -161,6 +162,7 @@ async function doLogin() {
     renderAll();
     await checkTermsAndShow();
     setTimeout(checkStampaBanner, 2000);
+    mostraSceltaModalitaSeNecessario();
     btn.disabled = false; btn.textContent = 'Accedi →';
   } catch(e) {
     err.textContent = 'Errore di rete: ' + e.message;
@@ -1982,31 +1984,27 @@ function segnaStampaConfermata(anno, mese) {
 
 // ─── MODALITÀ ARCHIVIAZIONE MENSILE ───
 // Decide se l'app fa pressione per la stampa/archiviazione del registro mensile.
-// La modalità è impostata SOLO dal superadmin (lato console). Il cliente vede
-// in che modalità sta ma non può cambiarla.
-// Default: OFF (modalità "monitoraggio + allarme" pura).
+// La modalità è scelta DAL CLIENTE al primo accesso (modale onboarding)
+// e modificabile in qualsiasi momento dalle Impostazioni → Modalità di funzionamento.
+// Il valore vive in aziendaCfg.archivio_mensile e viene salvato su Supabase.
+// Default per nuovi account: OFF finché il cliente non sceglie (modale apparirà al login).
 function isArchivioMensileAttivo() {
   return aziendaCfg.archivio_mensile === true;
 }
 
+// Aggiorna lo stato visivo del toggle e dei pannelli informativi nelle Impostazioni.
+// Chiamato dopo applyConfig() e dopo ogni cambio di modalità.
 function aggiornaUIArchivioMensile() {
   const attivo = isArchivioMensileAttivo();
-  // Popola il badge informativo read-only nella sezione Impostazioni
-  const icon   = document.getElementById('modalita-icon');
-  const titolo = document.getElementById('modalita-titolo');
-  const desc   = document.getElementById('modalita-desc');
-  if (icon && titolo && desc) {
-    if (attivo) {
-      icon.textContent   = '📋';
-      titolo.textContent = 'Monitoraggio + archiviazione mensile';
-      desc.textContent   = "Oltre al monitoraggio, a fine mese ti viene richiesto di scaricare il PDF del registro per archiviarlo firmato. Dal 1\u00b0 del mese successivo l'app è bloccata finché non viene scaricato.";
-    } else {
-      icon.textContent   = '🔔';
-      titolo.textContent = 'Monitoraggio e allarme';
-      desc.textContent   = "L'app ti avvisa se le temperature escono dalle soglie. Lo storico è consultabile e il PDF si può scaricare quando vuoi.";
-    }
-  }
-  // Coerenza runtime: se non attivo, nascondi banner/modali residue e cancella la notifica SW
+  // Toggle interattivo
+  const tgl = document.getElementById('cfg-archivio-mensile');
+  if (tgl) tgl.checked = attivo;
+  // Pannelli informativi "On" / "Off"
+  const on  = document.getElementById('archivio-mensile-info-on');
+  const off = document.getElementById('archivio-mensile-info-off');
+  if (on)  on.style.display  = attivo ? 'block' : 'none';
+  if (off) off.style.display = attivo ? 'none' : 'block';
+  // Coerenza runtime
   if (!attivo) {
     ['stampa-banner','banner-settimanale'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; });
     const m = document.getElementById('modal-blocco-mensile');
@@ -2019,6 +2017,71 @@ function aggiornaUIArchivioMensile() {
   } else {
     if (typeof checkStampaBanner === 'function') checkStampaBanner();
   }
+}
+
+// Cambio modalità dal toggle nelle Impostazioni
+async function cambiaModalitaArchivio() {
+  const tgl = document.getElementById('cfg-archivio-mensile');
+  if (!tgl) return;
+  const nuovo = !!tgl.checked;
+  aziendaCfg.archivio_mensile = nuovo;
+  localStorage.setItem('h_azienda', JSON.stringify(aziendaCfg));
+  aggiornaUIArchivioMensile();
+  // Salva su cloud se possibile (best effort)
+  try {
+    await sb.from('aziende').update({ archivio_mensile: nuovo }).eq('id', currentAziendaId);
+    showToast(nuovo ? '✓ Archiviazione mensile attivata' : '✓ Archiviazione mensile disattivata', 'success');
+  } catch(e) {
+    console.warn('[cambiaModalitaArchivio] errore sync cloud:', e);
+    showToast('Salvato localmente. Sincronizzazione in seguito.', 'warning');
+  }
+}
+
+// Scelta modalità dalla modale di onboarding
+async function scegliModalita(archivioAttivo) {
+  aziendaCfg.archivio_mensile = !!archivioAttivo;
+  localStorage.setItem('h_azienda', JSON.stringify(aziendaCfg));
+  // Chiudi la modale
+  const m = document.getElementById('modal-scelta-modalita');
+  if (m) m.classList.add('hidden');
+  // Aggiorna UI delle Impostazioni
+  aggiornaUIArchivioMensile();
+  // Salva sul cloud
+  try {
+    await sb.from('aziende').update({ archivio_mensile: !!archivioAttivo }).eq('id', currentAziendaId);
+  } catch(e) {
+    console.warn('[scegliModalita] errore sync cloud:', e);
+  }
+  showToast(archivioAttivo
+    ? '✓ Modalità con archiviazione mensile attivata'
+    : '✓ Modalità monitoraggio e allarme attivata', 'success');
+}
+
+// Mostra modale di scelta modalità SOLO se il cliente non ha mai scelto.
+// Chiamata dopo il login (sia primo che successivi).
+function mostraSceltaModalitaSeNecessario() {
+  if (currentRole === 'superadmin') return;
+  // Il flag archivio_mensile_scelto distingue "non scelto" da "scelto false"
+  if (aziendaCfg.archivio_mensile_scelto === true) return;
+  // Aspetta che il DOM e il login siano completati
+  setTimeout(() => {
+    const m = document.getElementById('modal-scelta-modalita');
+    if (m) {
+      m.classList.remove('hidden');
+      // Override scegliModalita per marcare anche la flag "scelto"
+      const originalScegli = window.scegliModalita;
+      window.scegliModalita = async function(attivo) {
+        aziendaCfg.archivio_mensile_scelto = true;
+        await originalScegli(attivo);
+        // Salva anche il flag scelto
+        try {
+          await sb.from('aziende').update({ archivio_mensile_scelto: true }).eq('id', currentAziendaId);
+        } catch(e) { console.warn(e); }
+        // Ripristina la funzione originale
+        window.scegliModalita = originalScegli;
+      };
+    }
+  }, 800);
 }
 
 function isBloccoStampa() {
