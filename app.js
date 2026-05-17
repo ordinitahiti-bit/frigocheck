@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// HACCP Pro Cloud — Client Supabase (multi-tenant)
+// FrigoCheck — Client Supabase (multi-tenant)
 // ═══════════════════════════════════════════════════════════════
 // Sostituisce completamente il vecchio backend Google Apps Script.
 // Usa Supabase per: autenticazione, database, RLS automatico per azienda.
@@ -698,6 +698,8 @@ function applyConfig() {
     const tipo = aziendaCfg.wa_notif_tipo || 'entrambi';
     waLabelEl.textContent = tipoMap[tipo] || tipoMap['entrambi'];
   }
+  // Aggiorna il badge informativo "Modalità di funzionamento" (read-only lato cliente)
+  if (typeof aggiornaUIArchivioMensile === 'function') aggiornaUIArchivioMensile();
 }
 
 function renderAll() {
@@ -1628,6 +1630,9 @@ function saveCfgLocal() {
   aziendaCfg.dataverifica        = document.getElementById('cfg-dataverifica').value;
   aziendaCfg.telefono_whatsapp   = document.getElementById('cfg-wa-telefono').value;
   aziendaCfg.callmebot_apikey    = document.getElementById('cfg-wa-apikey').value;
+  // Nota: aziendaCfg.archivio_mensile NON è modificabile dal cliente.
+  // La modalità di funzionamento è impostata esclusivamente dal superadmin
+  // tramite la console di amministrazione. Qui preserviamo il valore esistente.
   localStorage.setItem('h_azienda', JSON.stringify(aziendaCfg));
 }
 
@@ -1647,6 +1652,8 @@ async function saveCfgCloud() {
       dataverifica:        aziendaCfg.dataverifica       || null,
       telefono_whatsapp:   aziendaCfg.telefono_whatsapp  || '',
       callmebot_apikey:    aziendaCfg.callmebot_apikey   || ''
+      // NOTA: archivio_mensile NON viene inviato dal cliente.
+      // È un campo gestito solo dal superadmin via console admin.
     };
     const { error } = await sb.from('aziende').update(payload).eq('id', currentAziendaId);
     if (error) throw error;
@@ -1734,8 +1741,8 @@ function exportExcel() {
       'Azione Correttiva':fix?fix.azioni.join(', ')+(fix.note?' — '+fix.note:''):'',
       'Responsabile Fix':fix?fix.responsabile:''};
   }));
-  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Report HACCP');
-  XLSX.writeFile(wb,`HACCP_${mName.replace(/\s/g,'_')}.xlsx`);
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Registro Temperature');
+  XLSX.writeFile(wb,`RegistroTemperature_${mName.replace(/\s/g,'_')}.xlsx`);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1756,12 +1763,12 @@ function exportPDF() {
   doc.setFillColor(26,58,92); doc.rect(0,0,W,50,'F');
   doc.setTextColor(255,255,255);
   doc.setFontSize(9); doc.setFont('helvetica','normal');
-  doc.text('SISTEMA DI AUTOCONTROLLO ALIMENTARE', M, 14);
-  doc.text('Reg. CE 852/2004 — Allegato II', M, 19);
+  doc.text('SISTEMA DI MONITORAGGIO TEMPERATURE', M, 14);
+  doc.text('Registro interno rilevazioni apparecchi refrigeranti', M, 19);
   doc.setFontSize(16); doc.setFont('helvetica','bold');
-  doc.text('REGISTRO CONTROLLO TEMPERATURE', M, 31);
+  doc.text('REGISTRO TEMPERATURE FRIGORIFERI', M, 31);
   doc.setFontSize(10); doc.setFont('helvetica','normal');
-  doc.text('HACCP Pro Cloud — Documento Ufficiale', M, 39);
+  doc.text('Documento di tracciatura interna', M, 39);
   doc.text('Generato il: ' + oggi, W-M, 39, {align:'right'});
 
   let y = 58;
@@ -1774,9 +1781,9 @@ function exportPDF() {
     ['P.IVA / C.F.', aziendaCfg.piva || '________________'],
     ['Telefono', aziendaCfg.telefono || '________________'],
     ['Email', aziendaCfg.email || '________________'],
-    ['Responsabile HACCP', aziendaCfg.responsabile || '________________'],
-    ['N. Registrazione Sanitaria', aziendaCfg.regsanitaria || '________________'],
-    ['Data ultima verifica HACCP', aziendaCfg.dataverifica ? formatDateIT(aziendaCfg.dataverifica) : '________________']
+    ['Responsabile', aziendaCfg.responsabile || '________________'],
+    ['N. Registrazione attività', aziendaCfg.regsanitaria || '________________'],
+    ['Data ultima verifica', aziendaCfg.dataverifica ? formatDateIT(aziendaCfg.dataverifica) : '________________']
   ];
   doc.setFontSize(9);
   campiAzienda.forEach(function(campo) {
@@ -1799,8 +1806,8 @@ function exportPDF() {
     ['Totale rilevazioni', String(data.length)],
     ['Rilevazioni conformi', String(ok)],
     ['Rilevazioni non conformi', String(errs)],
-    ['Soglia frigo', '+4°C (Reg. CE 852/2004)'],
-    ['Soglia congelatore', '-18°C (Reg. CE 852/2004)']
+    ['Soglia frigo impostata', '+4°C'],
+    ['Soglia congelatore impostata', '-18°C']
   ];
   doc.setFontSize(9);
   campiPeriodo.forEach(function(campo) {
@@ -1817,8 +1824,8 @@ function exportPDF() {
   doc.text('DICHIARAZIONE DEL RESPONSABILE', M, y); y += 6;
   doc.setDrawColor(26,58,92); doc.line(M, y, W-M, y); y += 6;
   doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50);
-  doc.text('Il sottoscritto, in qualità di Responsabile HACCP, dichiara che le rilevazioni contenute nel presente', M, y); y+=5;
-  doc.text('registro sono state effettuate secondo le procedure del piano di autocontrollo aziendale.', M, y); y+=10;
+  doc.text('Il sottoscritto, in qualità di Responsabile, dichiara che le rilevazioni contenute nel presente', M, y); y+=5;
+  doc.text('registro sono state effettuate secondo le procedure interne di monitoraggio aziendale.', M, y); y+=10;
   doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(60,60,60);
   doc.text('Data: ___________________', M, y);
   doc.text('Firma: ___________________________', 100, y); y+=14;
@@ -1899,9 +1906,9 @@ function exportPDF() {
   yf += 5;
   doc.setDrawColor(26,58,92); doc.setLineWidth(0.5); doc.line(M,yf,W-M,yf); yf+=6;
   doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(26,58,92);
-  doc.text('VALIDAZIONE RESPONSABILE HACCP', M, yf); yf+=7;
+  doc.text('VALIDAZIONE DEL RESPONSABILE', M, yf); yf+=7;
   doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50); doc.setFontSize(8);
-  doc.text('Il Responsabile HACCP attesta la correttezza e completezza del presente registro.', M, yf); yf+=8;
+  doc.text('Il Responsabile attesta la correttezza e completezza del presente registro.', M, yf); yf+=8;
   doc.text('Data: ___________________', M, yf);
   doc.text('Timbro e Firma: ___________________________', 100, yf); yf+=10;
   doc.setDrawColor(150,150,150); doc.setLineWidth(0.3);
@@ -1912,11 +1919,11 @@ function exportPDF() {
     doc.setPage(p);
     doc.setFillColor(240,244,248); doc.rect(0,286,210,11,'F');
     doc.setTextColor(130,130,130); doc.setFontSize(7); doc.setFont('helvetica','normal');
-    doc.text('HACCP Pro Cloud  ·  ' + (aziendaCfg.azienda||'') + '  ·  P.IVA: ' + (aziendaCfg.piva||'N/D') + '  ·  Reg. CE 852/2004', M, 291.5);
+    doc.text('Registro Temperature  ·  ' + (aziendaCfg.azienda||'') + '  ·  P.IVA: ' + (aziendaCfg.piva||'N/D'), M, 291.5);
     doc.text('Pag. '+p+'/'+pages, W-M, 291.5, {align:'right'});
   }
 
-  const nomefile = 'HACCP_' + (aziendaCfg.azienda||'registro').replace(/[^a-zA-Z0-9]/g,'_') + '_' + mName.replace(/\s/g,'_') + '.pdf';
+  const nomefile = 'RegistroTemperature_' + (aziendaCfg.azienda||'registro').replace(/[^a-zA-Z0-9]/g,'_') + '_' + mName.replace(/\s/g,'_') + '.pdf';
 
   // Se blocco mensile attivo, il download sblocca l'app
   if (isBloccoStampa()) {
@@ -1972,8 +1979,51 @@ function mesePrecedenteConfermato() {
 function segnaStampaConfermata(anno, mese) {
   localStorage.setItem(chiaveConfermaStampa(anno, mese), String(Date.now()));
 }
+
+// ─── MODALITÀ ARCHIVIAZIONE MENSILE ───
+// Decide se l'app fa pressione per la stampa/archiviazione del registro mensile.
+// La modalità è impostata SOLO dal superadmin (lato console). Il cliente vede
+// in che modalità sta ma non può cambiarla.
+// Default: OFF (modalità "monitoraggio + allarme" pura).
+function isArchivioMensileAttivo() {
+  return aziendaCfg.archivio_mensile === true;
+}
+
+function aggiornaUIArchivioMensile() {
+  const attivo = isArchivioMensileAttivo();
+  // Popola il badge informativo read-only nella sezione Impostazioni
+  const icon   = document.getElementById('modalita-icon');
+  const titolo = document.getElementById('modalita-titolo');
+  const desc   = document.getElementById('modalita-desc');
+  if (icon && titolo && desc) {
+    if (attivo) {
+      icon.textContent   = '📋';
+      titolo.textContent = 'Monitoraggio + archiviazione mensile';
+      desc.textContent   = "Oltre al monitoraggio, a fine mese ti viene richiesto di scaricare il PDF del registro per archiviarlo firmato. Dal 1\u00b0 del mese successivo l'app è bloccata finché non viene scaricato.";
+    } else {
+      icon.textContent   = '🔔';
+      titolo.textContent = 'Monitoraggio e allarme';
+      desc.textContent   = "L'app ti avvisa se le temperature escono dalle soglie. Lo storico è consultabile e il PDF si può scaricare quando vuoi.";
+    }
+  }
+  // Coerenza runtime: se non attivo, nascondi banner/modali residue e cancella la notifica SW
+  if (!attivo) {
+    ['stampa-banner','banner-settimanale'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; });
+    const m = document.getElementById('modal-blocco-mensile');
+    if (m) m.classList.add('hidden');
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'CANCEL_NOTIFICA_MENSILE' });
+      }
+    } catch(e) { /* SW non disponibile, ok */ }
+  } else {
+    if (typeof checkStampaBanner === 'function') checkStampaBanner();
+  }
+}
+
 function isBloccoStampa() {
   if (currentRole === 'superadmin') return false;
+  if (!isArchivioMensileAttivo()) return false;
   let i = parseInt(localStorage.getItem('h_data_inizio_account') || '0');
   if (!i) { i = Date.now(); localStorage.setItem('h_data_inizio_account', String(i)); }
   if ((Date.now() - i) < 30 * UN_GIORNO_MS) return false;
@@ -1986,6 +2036,13 @@ function mostraBloccoMensile() {
 function checkStampaBanner() {
   if (currentRole === 'superadmin') {
     ['stampa-banner','banner-settimanale'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; });
+    return;
+  }
+  // Se l'archiviazione mensile è disattivata, nessun banner / blocco / promemoria
+  if (!isArchivioMensileAttivo()) {
+    ['stampa-banner','banner-settimanale'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; });
+    const m = document.getElementById('modal-blocco-mensile');
+    if (m) m.classList.add('hidden');
     return;
   }
   let i = parseInt(localStorage.getItem('h_data_inizio_account') || '0');
@@ -2034,7 +2091,7 @@ function checkStampaBanner() {
         sub.textContent = 'Non hai ancora stampato nessun registro. Ti consigliamo di farlo regolarmente.';
       } else {
         const giorni = Math.floor((Date.now() - ultimaConferma) / UN_GIORNO_MS);
-        sub.textContent = 'Sono passati ' + giorni + " giorni dall'ultima stampa. Tieniti in regola con il Reg. CE 852/2004.";
+        sub.textContent = 'Sono passati ' + giorni + " giorni dall'ultima stampa. Ti consigliamo di archiviare regolarmente il registro.";
       }
     }
     bsett.style.display = 'block';
@@ -2107,6 +2164,11 @@ async function registraServiceWorkerNotifiche() {
     });
     const perm = await Notification.requestPermission();
     if (perm !== 'granted') return;
+    // Se l'archiviazione mensile è disattivata, non programmare la notifica e cancellane di pendenti
+    if (!isArchivioMensileAttivo()) {
+      if (reg.active) reg.active.postMessage({ type: 'CANCEL_NOTIFICA_MENSILE' });
+      return;
+    }
     const ora = new Date();
     const ultimoGiorno = new Date(ora.getFullYear(), ora.getMonth() + 1, 0);
     ultimoGiorno.setHours(9, 0, 0, 0);
@@ -2123,7 +2185,7 @@ async function registraServiceWorkerNotifiche() {
         if (s.state === 'granted') await reg.periodicSync.register('haccp-alarm-check', { minInterval: 3600000 });
       } catch(_) {}
     }
-  } catch(e) { console.warn('[SW HACCP] registrazione fallita:', e); }
+  } catch(e) { console.warn('[SW FrigoCheck] registrazione fallita:', e); }
 }
 
 // RESET (solo Admin)
