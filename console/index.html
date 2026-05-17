@@ -401,14 +401,8 @@
                  class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
         </div>
         <div class="col-span-2">
-          <div class="bg-blue-50 border border-blue-200 rounded-md p-3">
-            <label class="flex items-start gap-2 cursor-pointer">
-              <input id="cf-archivio-mensile" type="checkbox" class="mt-0.5 w-4 h-4 cursor-pointer flex-shrink-0">
-              <div class="flex-1">
-                <div class="text-xs font-bold text-slate-800">📋 Archiviazione mensile</div>
-                <div class="text-[11px] text-slate-600 mt-0.5">Se attiva, l'app forza il download del PDF a fine mese. Altrimenti funziona come allarme/monitoraggio.</div>
-              </div>
-            </label>
+          <div class="bg-slate-50 border border-slate-200 rounded-md p-3 text-[11px] text-slate-600 leading-relaxed">
+            💡 <strong>Modalità app:</strong> il cliente sceglier&agrave; al primo accesso se attivare l'archiviazione mensile o usare solo monitoraggio/allarme. Potrà cambiare la scelta in qualsiasi momento dalle sue Impostazioni.
           </div>
         </div>
       </div>
@@ -502,12 +496,12 @@
         <input id="ef-scadenza" type="date" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
       </div>
       <div>
-        <label class="text-xs font-bold text-slate-600 block mb-1">Modalità app</label>
-        <select id="ef-archivio-mensile" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white">
+        <label class="text-xs font-bold text-slate-600 block mb-1">Modalità app <span class="text-slate-400 font-normal">(scelta dal cliente)</span></label>
+        <select id="ef-archivio-mensile" disabled class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm bg-slate-50 text-slate-600 cursor-not-allowed">
           <option value="false">🔔 Monitoraggio e allarme (default)</option>
           <option value="true">📋 + Archiviazione mensile</option>
         </select>
-        <p class="text-[10px] text-slate-500 mt-1 leading-snug">Archiviazione mensile: l'app forza il download del registro PDF a fine mese.</p>
+        <p class="text-[10px] text-slate-500 mt-1 leading-snug">La modalità è scelta autonomamente dal cliente al primo accesso o dalle sue Impostazioni. Qui puoi solo visualizzarla.</p>
       </div>
       <div>
         <label class="text-xs font-bold text-slate-600 block mb-1">Note interne (visibili solo a te)</label>

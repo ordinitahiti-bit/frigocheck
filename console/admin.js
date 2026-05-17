@@ -143,9 +143,15 @@ function renderTable() {
       pauseBadge = `<span class="${tone} px-2 py-0.5 rounded-full text-[11px] font-bold">${pauseN}/2</span>`;
     }
     const archAttivo = c.archivio_mensile === true;
-    const modalBadge = archAttivo
-      ? '<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[11px] font-bold" title="L\'app forza il download mensile del registro PDF">📋 Archivio mensile</span>'
-      : '<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[11px] font-bold" title="L\'app funziona come allarme/monitoraggio puro">🔔 Solo allarme</span>';
+    const archScelto = c.archivio_mensile_scelto === true;
+    let modalBadge;
+    if (!archScelto) {
+      modalBadge = '<span class="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full text-[11px] font-bold" title="Il cliente non ha ancora scelto la modalità al primo accesso">⏳ Da scegliere</span>';
+    } else if (archAttivo) {
+      modalBadge = '<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[11px] font-bold" title="Il cliente ha attivato l\'archiviazione mensile">📋 Archivio mensile</span>';
+    } else {
+      modalBadge = '<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[11px] font-bold" title="Il cliente ha scelto modalità monitoraggio/allarme">🔔 Solo allarme</span>';
+    }
     return `<tr class="border-b border-slate-100 hover:bg-slate-50">
       <td class="py-2.5 px-3"><div class="font-semibold text-slate-900">${escapeHtml(c.nome_ristorante || '—')}</div><div class="text-[11px] text-slate-500 md:hidden">${escapeHtml(c.email || '')}</div>${c.telefono_whatsapp ? `<div class="text-[11px] text-slate-400">📱 ${escapeHtml(c.telefono_whatsapp)}</div>` : ''}</td>
       <td class="py-2.5 px-3 text-slate-600 hidden md:table-cell">${escapeHtml(c.email || '—')}</td>
@@ -376,8 +382,6 @@ function openCreateModal() {
   ['cf-email','cf-pass','cf-nome','cf-tel','cf-cmb','cf-indirizzo','cf-piva'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('cf-piano').value = '14.99_basic';
   document.getElementById('cf-mesi').value = '1';
-  const arch = document.getElementById('cf-archivio-mensile');
-  if (arch) arch.checked = false; // Default: modalità "solo allarme"
   document.getElementById('cf-err').textContent = '';
   document.getElementById('cf-pass').value = generatePassword();
   document.getElementById('modal-create').classList.remove('hidden');
@@ -405,7 +409,7 @@ async function doCreateClient() {
     mesi_iniziali: parseInt(document.getElementById('cf-mesi').value),
     indirizzo: document.getElementById('cf-indirizzo').value.trim(),
     piva: document.getElementById('cf-piva').value.trim(),
-    archivio_mensile: !!document.getElementById('cf-archivio-mensile').checked,
+    // archivio_mensile NON viene impostato qui: la scelta è del cliente al primo accesso.
   };
   if (!payload.email || !payload.password || !payload.nome_ristorante) { err.textContent = 'Compila i campi obbligatori (*)'; return; }
   if (payload.password.length < 8) { err.textContent = 'Password troppo corta (min 8 caratteri)'; return; }
@@ -498,7 +502,8 @@ async function doSaveEdit() {
     piano_abbonamento: document.getElementById('ef-piano').value,
     wa_notif_tipo: (waEl && pianoHasWA(document.getElementById('ef-piano').value)) ? waEl.value : 'entrambi',
     note_admin: document.getElementById('ef-note').value,
-    archivio_mensile: document.getElementById('ef-archivio-mensile').value === 'true',
+    // archivio_mensile NON viene inviato: è di sola visualizzazione lato superadmin.
+    // La scelta è autonomamente del cliente dalle sue Impostazioni.
   };
   const scadEl = document.getElementById('ef-scadenza');
   if (scadEl) {
