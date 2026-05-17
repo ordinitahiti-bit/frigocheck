@@ -312,3 +312,12 @@ textarea { resize:vertical; min-height:68px; }
 .setup-tab { display:none; }
 .setup-tab.active { display:block; animation:setupFadeIn .2s ease; }
 @keyframes setupFadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── Toggle switch ── */
+.switch { position:relative; display:inline-block; width:44px; height:24px; }
+.switch input { opacity:0; width:0; height:0; }
+.switch .slider { position:absolute; cursor:pointer; inset:0; background:#cbd5e1; transition:.25s; border-radius:24px; }
+.switch .slider::before { position:absolute; content:""; height:18px; width:18px; left:3px; top:3px; background:#fff; transition:.25s; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.switch input:checked + .slider { background:#2563a8; }
+.switch input:checked + .slider::before { transform:translateX(20px); }
+.switch input:focus-visible + .slider { box-shadow:0 0 0 3px rgba(37,99,168,.25); }
