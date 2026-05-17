@@ -3,616 +3,649 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FrigoCheck · Admin Dashboard</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<title>FrigoCheck</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+<link rel="stylesheet" href="style.css">
 <style>
-  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
-  .nav-grad { background: linear-gradient(135deg, #1e3a5f 0%, #2563a8 100%); }
-  /* Modal animato */
-  .modal-bg { animation: fadeIn .15s ease; }
-  .modal-card { animation: slideUp .2s ease; }
-  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-  @keyframes slideUp { from{transform:translateY(15px);opacity:0} to{transform:translateY(0);opacity:1} }
+  /* ── Informativa legale ── */
+  .terms-section {
+    background: #f0f4ff;
+    border-left: 3px solid #1e40af;
+    border-radius: 0 8px 8px 0;
+    padding: 10px 13px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    line-height: 1.65;
+    color: #374151;
+  }
+  .terms-section-title {
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 5px;
+    font-size: 12px;
+  }
+  .terms-text p { margin-bottom: 8px; }
+  .terms-text ul li { line-height: 1.8; }
+
+  /* Fix scroll su desktop */
+  #terms-screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 20px 16px;
+    background: rgba(15,23,42,0.85);
+    z-index: 999;
+  }
+  .terms-card {
+    width: 100%;
+    max-width: 600px;
+    margin: auto;
+  }
 </style>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body>
 
-<!-- ═══════════════════════════════════════════════════════════ -->
-<!-- LOGIN SCREEN                                                  -->
-<!-- ═══════════════════════════════════════════════════════════ -->
-<div id="login-screen" class="fixed inset-0 nav-grad flex items-center justify-center p-6 z-50">
-  <div class="bg-white/8 backdrop-blur-md border border-white/10 rounded-2xl p-8 w-full max-w-sm shadow-2xl">
-    <div class="text-center mb-6">
-      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-500/30 text-3xl mb-3">🛡️</div>
-      <h1 class="text-white text-xl font-bold">Admin Dashboard</h1>
-      <p class="text-white/50 text-xs mt-1">Solo per superadmin</p>
-    </div>
-    <div class="space-y-3">
-      <div>
-        <label class="text-white/70 text-xs font-bold uppercase tracking-wider block mb-1.5">Email</label>
-        <input id="login-email" type="email" placeholder="admin@..."
-               class="w-full px-3 py-2.5 rounded-lg bg-white/10 border border-white/15 text-white text-sm placeholder-white/30 focus:outline-none focus:border-blue-300">
+<!-- LOGIN -->
+<div id="login-screen">
+  <img src="haccp.png" alt="FrigoCheck" class="login-logo-img">
+  <p class="login-sub">Accedi al registro temperature</p>
+  <div class="login-card">
+    <div class="field">
+      <label>Email</label>
+      <div class="input-wrap">
+        <span class="ico">✉️</span>
+        <input type="email" id="login-email" placeholder="nome@azienda.it" autocomplete="username" inputmode="email">
       </div>
-      <div>
-        <label class="text-white/70 text-xs font-bold uppercase tracking-wider block mb-1.5">Password</label>
-        <input id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password"
-               onkeydown="if(event.key==='Enter') doLogin()"
-               class="w-full px-3 py-2.5 rounded-lg bg-white/10 border border-white/15 text-white text-sm placeholder-white/30 focus:outline-none focus:border-blue-300">
-      </div>
-      <p id="login-err" class="text-red-300 text-xs text-center min-h-[16px] font-medium"></p>
-      <button id="login-btn" onclick="doLogin()"
-              class="w-full py-3 rounded-lg bg-blue-500 hover:bg-blue-400 text-white font-bold text-sm transition shadow-lg">
-        Accedi →
-      </button>
     </div>
-    <p class="text-white/40 text-[11px] text-center mt-5">FrigoCheck · Admin v1</p>
+    <div class="field">
+      <label>Password</label>
+      <div class="input-wrap">
+        <span class="ico">🔑</span>
+        <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter') doLogin()">
+      </div>
+    </div>
+    <div class="login-err" id="login-err"></div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Accedi →</button>
+    <div style="text-align:center;margin-top:4px;">
+      <a href="#" onclick="doRecoverPassword();return false;" style="color:#7dd3fc;font-size:12px;text-decoration:none;">Password dimenticata?</a>
+    </div>
+  </div>
+  <div class="login-foot">FrigoCheck · Sistema monitoraggio temperature</div>
+</div>
+
+<!-- RESET PASSWORD -->
+<div id="reset-screen" style="display:none;">
+  <div class="login-card" style="margin:auto;">
+    <div style="text-align:center;margin-bottom:18px;">
+      <div class="login-logo">🔐</div>
+      <h2>Nuova password</h2>
+      <p class="login-sub">Scegli la tua nuova password di accesso</p>
+    </div>
+    <div class="field">
+      <label>Nuova password</label>
+      <div class="input-wrap">
+        <span class="ico">🔑</span>
+        <input type="password" id="reset-pwd" placeholder="min. 6 caratteri" autocomplete="new-password">
+      </div>
+    </div>
+    <div class="field">
+      <label>Conferma password</label>
+      <div class="input-wrap">
+        <span class="ico">🔑</span>
+        <input type="password" id="reset-pwd2" placeholder="ripeti la password" autocomplete="new-password" onkeydown="if(event.key==='Enter') doResetPassword()">
+      </div>
+    </div>
+    <div class="login-err" id="reset-err"></div>
+    <button class="login-btn" id="reset-btn" onclick="doResetPassword()">Salva nuova password →</button>
+    <div style="text-align:center;margin-top:8px;">
+      <a href="#" onclick="annullaReset();return false;" style="color:#7dd3fc;font-size:12px;text-decoration:none;">Annulla</a>
+    </div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════ -->
-<!-- DASHBOARD                                                      -->
-<!-- ═══════════════════════════════════════════════════════════ -->
-<div id="dash" class="hidden">
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="loader"></div>
+  <h2>FrigoCheck</h2>
+  <p id="loading-msg">Sincronizzazione in corso...</p>
+</div>
 
-  <!-- Header -->
-  <div class="nav-grad text-white px-5 py-3 flex justify-between items-center shadow">
+<!-- DISCLAIMER LEGALE OBBLIGATORIO -->
+<div id="terms-screen" style="display:none;overflow-y:auto;">
+  <div class="terms-card" style="max-height:none;margin:auto;">
+    <div class="terms-icon">⚖️</div>
+    <h2>Informativa e Dichiarazione di Responsabilità</h2>
+    <p class="terms-sub">Leggi attentamente prima di accedere al servizio</p>
+    <div class="terms-text">
+      <p style="margin-bottom:10px;">Benvenuto in <strong>FrigoCheck</strong>, sistema di supporto al monitoraggio e controllo delle temperature dei frigoriferi e degli apparecchi refrigeranti. L'applicazione consente la raccolta, l'archiviazione e la stampa periodica dello storico delle rilevazioni di temperatura.</p>
+      <p style="margin-bottom:10px;">FrigoCheck è uno <strong>strumento di supporto operativo</strong> e <strong>non si sostituisce ai protocolli HACCP</strong> né alle procedure di autocontrollo aziendale previste dalla normativa vigente. Le rilevazioni effettuate tramite l'applicazione non sostituiscono in alcun modo le misurazioni eseguite con sonde certificate, ove queste siano richieste dalla normativa applicabile all'attività.</p>
+      <p style="margin-bottom:10px;">La responsabilità della sicurezza alimentare e della conformità ai protocolli HACCP resta in capo al Responsabile dell'attività, che resta l'unico garante dinanzi alle autorità competenti.</p>
+      <p style="margin-bottom:8px;">L'utente, accedendo al servizio, prende atto e accetta quanto segue:</p>
+
+      <div class="terms-section">
+        <div class="terms-section-title">📋 Ruolo dell'Applicativo</div>
+        Il software funge esclusivamente da <strong>supporto digitale</strong> per la raccolta e l'archiviazione dei dati di temperatura. L'utilizzo dell'applicazione non sostituisce in alcun modo la figura del Responsabile dell'attività, il quale resta l'unico garante della corretta gestione operativa e della sicurezza alimentare dinanzi alle autorità competenti.
+      </div>
+
+      <div class="terms-section">
+        <div class="terms-section-title">👁 Responsabilità della Vigilanza</div>
+        È responsabilità esclusiva del titolare della struttura assicurarsi della corretta esecuzione delle procedure di monitoraggio. L'applicazione <strong>non solleva l'operatore</strong> dall'obbligo di verifica visiva e manuale qualora le circostanze lo richiedano.
+      </div>
+
+      <div class="terms-section">
+        <div class="terms-section-title">📡 Connettività e Sensori Wireless</div>
+        In caso di utilizzo di sensori wireless o sistemi di monitoraggio remoto, il corretto funzionamento degli stessi è strettamente dipendente dalla <strong>stabilità della rete locale</strong> (Wi-Fi/Ethernet) e della copertura internet della struttura.
+      </div>
+
+      <div class="terms-section">
+        <div class="terms-section-title">⚠️ Esclusione di Responsabilità per Disservizi Tecnici</div>
+        Lo sviluppatore e la proprietà dell'applicazione <strong>non potranno essere ritenuti responsabili</strong> per mancate rilevazioni, assenza di dati o mancata ricezione di notifiche di allarme derivanti da:
+        <ul style="margin:8px 0 0 16px;line-height:1.8;">
+          <li>Assenza o instabilità della connessione di rete;</li>
+          <li>Malfunzionamento dell'hardware (router, sensori, batterie scariche);</li>
+          <li>Cause di forza maggiore che impediscano la trasmissione telematica dei dati.</li>
+        </ul>
+      </div>
+
+      <p style="margin-top:10px;font-size:11px;line-height:1.6;">Il Responsabile della struttura si impegna pertanto a <strong>verificare periodicamente</strong> l'integrità del sistema di monitoraggio e la corretta registrazione dei dati nel registro digitale.</p>
+    </div>
+
+    <label class="terms-check">
+      <input type="checkbox" id="terms-check" onchange="document.getElementById('terms-btn').disabled = !this.checked">
+      <span>Ho letto e accetto integralmente i termini e le condizioni di responsabilità</span>
+    </label>
+    <button class="terms-btn" id="terms-btn" onclick="acceptTerms()" disabled>
+      ✓ Accetto e attivo il servizio →
+    </button>
+    <p class="terms-foot">In caso di rifiuto, esci dall'applicazione e contatta l'assistenza.<br>Questo documento è consultabile in qualsiasi momento dal tab <strong>⚖️ Legale</strong> nell'header.</p>
+  </div>
+</div>
+
+<div id="offline-bar" class="offline-bar">⚠️ Nessuna connessione — dati salvati localmente</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-row">
     <div>
-      <div class="text-base font-bold">FrigoCheck · Admin</div>
-      <div id="user-info" class="text-xs opacity-70">—</div>
+      <h1>FrigoCheck</h1>
+      <p><span class="online-dot"></span><span id="today-date"></span> &nbsp;<span id="operatore-badge" onclick="doLogout()"></span></p>
     </div>
-    <div class="flex items-center gap-2">
-      <a href="../" class="text-xs px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 transition">← Torna all'app</a>
-      <button onclick="doLogout()" class="text-xs px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 transition">Esci</button>
-    </div>
+    <span class="top-badge" id="top-badge">—</span>
   </div>
-
-  <div class="max-w-7xl mx-auto p-4 sm:p-6">
-
-    <!-- Stat Cards -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-      <div class="bg-white border border-slate-200 rounded-lg p-3.5">
-        <div class="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Totale</div>
-        <div id="stat-totale" class="text-2xl font-bold mt-1 text-slate-800">—</div>
-      </div>
-      <div class="bg-green-50 border border-green-200 rounded-lg p-3.5">
-        <div class="text-[11px] text-green-700 uppercase tracking-wider font-semibold">Attivi</div>
-        <div id="stat-attivi" class="text-2xl font-bold mt-1 text-green-900">—</div>
-      </div>
-      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3.5">
-        <div class="text-[11px] text-amber-700 uppercase tracking-wider font-semibold">In scadenza</div>
-        <div id="stat-scadenza" class="text-2xl font-bold mt-1 text-amber-900">—</div>
-      </div>
-      <div class="bg-red-50 border border-red-200 rounded-lg p-3.5">
-        <div class="text-[11px] text-red-700 uppercase tracking-wider font-semibold">Scaduti</div>
-        <div id="stat-scaduti" class="text-2xl font-bold mt-1 text-red-900">—</div>
-      </div>
-    </div>
-
-    <!-- Nav pills -->
-    <div class="flex flex-wrap gap-2 mb-5">
-      <button onclick="setView('clients',this)"
-              class="nav-pill bg-slate-800 text-white nav-pill-active px-4 py-2 rounded-full text-sm font-bold transition">
-        👥 Clienti
-      </button>
-      <button onclick="setView('esp-log',this)"
-              class="nav-pill bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-full text-sm font-bold transition hover:bg-slate-50">
-        📡 Log ESP
-      </button>
-      <button onclick="setView('audit',this)"
-              class="nav-pill bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-full text-sm font-bold transition hover:bg-slate-50">
-        📋 Audit Log
-      </button>
-      <button onclick="setView('trash',this)"
-              class="nav-pill bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-full text-sm font-bold transition hover:bg-slate-50">
-        🗑 Cestino
-      </button>
-    </div>
-
-    <!-- ═══ VIEW: Clienti ═══ -->
-    <div id="view-clients">
-      <!-- Toolbar -->
-      <div class="flex flex-col sm:flex-row gap-2 mb-4">
-        <input id="search" placeholder="Cerca ristorante, email, telefono…" oninput="renderTable()"
-               class="flex-1 px-3 py-2 rounded-md border border-slate-300 text-sm focus:outline-none focus:border-blue-400">
-        <select id="filter-stato" onchange="renderTable()"
-                class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
-          <option value="all">Tutti gli stati</option>
-          <option value="attivo">Solo attivi</option>
-          <option value="in_scadenza">In scadenza (≤7gg)</option>
-          <option value="scaduto">Solo scaduti</option>
-        </select>
-        <button onclick="openCreateModal()"
-                class="px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold transition whitespace-nowrap">
-          + Nuovo Cliente
-        </button>
-      </div>
-
-      <!-- Tabella clienti -->
-      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 border-b border-slate-200">
-              <tr class="text-left">
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Ristorante</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden md:table-cell">Email</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Piano</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Modalità</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pausa</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Scadenza</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Stato</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Azioni</th>
-              </tr>
-            </thead>
-            <tbody id="clienti-body">
-              <tr><td colspan="7" class="p-8 text-center text-slate-400 text-sm">Caricamento…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <p id="footer-info" class="text-xs text-slate-400 mt-3 text-right"></p>
-    </div>
-
-    <!-- ═══ VIEW: Log ESP ═══ -->
-    <div id="view-esp-log" class="hidden">
-      <div class="bg-white border border-slate-200 rounded-lg p-4 mb-4">
-        <h2 class="font-bold text-slate-800 mb-3">📡 Log ricezione dati ESP32</h2>
-        <div class="flex flex-col sm:flex-row gap-2 mb-3">
-          <select id="esp-log-client"
-                  class="flex-1 px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
-            <option value="">— Seleziona cliente —</option>
-          </select>
-          <select id="esp-log-period"
-                  class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
-            <option value="1">Ultime 24 ore</option>
-            <option value="7" selected>Ultimi 7 giorni</option>
-            <option value="30">Ultimi 30 giorni</option>
-            <option value="90">Ultimi 90 giorni</option>
-          </select>
-          <button onclick="loadEspLog()"
-                  class="px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold whitespace-nowrap">
-            Carica
-          </button>
-          <button onclick="exportEspLogCSV()"
-                  class="px-4 py-2 rounded-md border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-bold whitespace-nowrap">
-            ⬇ CSV
-          </button>
-        </div>
-        <div class="flex justify-between items-center">
-          <span id="esp-log-count" class="text-xs text-slate-400"></span>
-          <label class="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
-            <input type="checkbox" id="esp-log-anomaly-only" onchange="renderEspLogTable()" class="rounded">
-            Solo anomalie
-          </label>
-        </div>
-      </div>
-
-      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 border-b border-slate-200">
-              <tr class="text-left">
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Data / Ora ricezione</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Apparecchio</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Temperatura</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tipo</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Stato</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Token device</th>
-              </tr>
-            </thead>
-            <tbody id="esp-log-body">
-              <tr><td colspan="6" class="p-8 text-center text-slate-400 text-sm">Seleziona un cliente e clicca Carica</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══ VIEW: Audit Log ═══ -->
-    <div id="view-audit" class="hidden">
-      <div class="bg-white border border-slate-200 rounded-lg p-4 mb-4">
-        <h2 class="font-bold text-slate-800 mb-3">📋 Audit Log operazioni</h2>
-        <div class="flex flex-col sm:flex-row gap-2 mb-3">
-          <select id="audit-client"
-                  class="flex-1 px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
-            <option value="">Tutti i clienti</option>
-          </select>
-          <select id="audit-period"
-                  class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
-            <option value="1">Ultime 24 ore</option>
-            <option value="7" selected>Ultimi 7 giorni</option>
-            <option value="30">Ultimi 30 giorni</option>
-            <option value="90">Ultimi 90 giorni</option>
-          </select>
-          <select id="audit-table"
-                  class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
-            <option value="">Tutte le tabelle</option>
-            <option value="temperature">temperature</option>
-            <option value="azioni_correttive">azioni_correttive</option>
-            <option value="firme">firme</option>
-            <option value="apparecchi">apparecchi</option>
-          </select>
-          <select id="audit-op"
-                  class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
-            <option value="">Tutte le operazioni</option>
-            <option value="INSERT">INSERT</option>
-            <option value="UPDATE">UPDATE</option>
-            <option value="DELETE">DELETE</option>
-            <option value="SOFT_DELETE">SOFT_DELETE</option>
-            <option value="RESTORE">RESTORE</option>
-          </select>
-          <button onclick="loadAudit()"
-                  class="px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold whitespace-nowrap">
-            Carica
-          </button>
-        </div>
-        <div class="flex justify-between items-center">
-          <span id="audit-count" class="text-xs text-slate-400"></span>
-          <div class="flex gap-2">
-            <button onclick="exportAuditCSV()"
-                    class="px-3 py-1.5 rounded-md border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold">
-              ⬇ CSV
-            </button>
-            <button onclick="clearAudit()"
-                    class="px-3 py-1.5 rounded-md border border-red-200 hover:bg-red-50 text-red-700 text-xs font-bold">
-              🗑 Svuota log cliente
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 border-b border-slate-200">
-              <tr class="text-left">
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Data / Ora</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Utente</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tabella</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Operazione</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Dettagli</th>
-              </tr>
-            </thead>
-            <tbody id="audit-body">
-              <tr><td colspan="5" class="p-8 text-center text-slate-400 text-sm">Seleziona filtri e clicca Carica</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══ VIEW: Cestino / Ripristino ═══ -->
-    <div id="view-trash" class="hidden">
-      <div class="bg-white border border-slate-200 rounded-lg p-4 mb-4">
-        <h2 class="font-bold text-slate-800 mb-1">🗑 Cestino — Ripristino registrazioni</h2>
-        <p class="text-xs text-slate-500 mb-3">Qui trovi le registrazioni eliminate dall'utente tramite soft-delete. Puoi ripristinarle singolarmente o svuotare definitivamente il cestino.</p>
-        <div class="flex flex-col sm:flex-row gap-2 mb-3">
-          <select id="trash-client"
-                  class="flex-1 px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
-            <option value="">— Seleziona cliente —</option>
-          </select>
-          <select id="trash-table"
-                  class="px-3 py-2 rounded-md border border-slate-300 text-sm bg-white">
-            <option value="">Tutte le tabelle</option>
-            <option value="temperature">temperature</option>
-            <option value="azioni_correttive">azioni_correttive</option>
-            <option value="firme">firme</option>
-          </select>
-          <button onclick="loadTrash()"
-                  class="px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold whitespace-nowrap">
-            Carica
-          </button>
-        </div>
-        <div class="flex justify-between items-center">
-          <span id="trash-count" class="text-xs text-slate-400"></span>
-          <button onclick="clearTrash()"
-                  class="px-3 py-1.5 rounded-md border border-red-300 hover:bg-red-50 text-red-700 text-xs font-bold">
-            ☠ Svuota cestino definitivamente
-          </button>
-        </div>
-      </div>
-
-      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 border-b border-slate-200">
-              <tr class="text-left">
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Eliminato il</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Record</th>
-                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Azione</th>
-              </tr>
-            </thead>
-            <tbody id="trash-body">
-              <tr><td colspan="3" class="p-8 text-center text-slate-400 text-sm">Seleziona un cliente e clicca Carica</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('dash',this)">Oggi</div>
+    <div class="tab" onclick="switchTab('log',this)">Registra</div>
+    <div class="tab" onclick="switchTab('schedule',this)">Orari<span class="rdot" id="rdot"></span></div>
+    <div class="tab" onclick="switchTab('firma',this)">Firma</div>
+    <div class="tab" onclick="switchTab('history',this)">Report</div>
+    <div class="tab" onclick="switchTab('setup',this)">Setup</div>
+    <div class="tab" onclick="document.getElementById('modal-note-legali').style.display='flex'" style="opacity:0.75;font-size:11px;">⚖️ Legale</div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════ -->
-<!-- MODAL: Crea cliente                                            -->
-<!-- ═══════════════════════════════════════════════════════════ -->
-<div id="modal-create" class="hidden fixed inset-0 bg-black/50 modal-bg flex items-center justify-center p-4 z-40" onclick="closeModalBg(event,'modal-create')">
-  <div class="bg-white rounded-xl modal-card w-full max-w-lg max-h-[90vh] overflow-y-auto">
-    <div class="p-5 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white">
-      <h3 class="font-bold text-lg">➕ Nuovo Cliente</h3>
-      <button onclick="closeModal('modal-create')" class="text-slate-400 hover:text-slate-700 text-xl">✕</button>
+<!-- MODAL AZIONE CORRETTIVA -->
+<div id="modal-overlay" class="modal-overlay hidden">
+  <div class="modal">
+    <h3>🛠 Azione Correttiva</h3>
+    <p style="font-size:11px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:6px 10px;margin-bottom:8px;">⚠️ <strong>Compilazione obbligatoria</strong> — Registra l'azione eseguita per conformità ASL. Il modulo non può essere chiuso senza salvare.</p>
+    <p id="modal-sub" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;"></p>
+    <div class="field">
+      <label>Azione eseguita</label>
+      <div id="action-chips" style="margin-bottom:8px;"></div>
     </div>
-    <div class="p-5 space-y-3">
-      <div class="grid grid-cols-2 gap-3">
-        <div class="col-span-2">
-          <label class="text-xs font-bold text-slate-600 block mb-1">Email <span class="text-red-500">*</span></label>
-          <input id="cf-email" type="email" placeholder="cliente@esempio.it"
-                 class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
-        </div>
-        <div class="col-span-2">
-          <label class="text-xs font-bold text-slate-600 block mb-1">Password <span class="text-red-500">*</span></label>
-          <input id="cf-pass" type="text" placeholder="min. 8 caratteri"
-                 class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono">
-          <p class="text-[11px] text-slate-500 mt-1">⚠️ Comunicala al cliente — non potrai più rivederla in chiaro.</p>
-        </div>
-        <div class="col-span-2">
-          <label class="text-xs font-bold text-slate-600 block mb-1">Nome ristorante <span class="text-red-500">*</span></label>
-          <input id="cf-nome" type="text" placeholder="Es: Trattoria Da Mario"
-                 class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
-        </div>
-        <div>
-          <label class="text-xs font-bold text-slate-600 block mb-1">Telefono</label>
-          <input id="cf-tel" type="text" placeholder="+39 333 1234567"
-                 class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
-        </div>
-        <div>
-          <label class="text-xs font-bold text-slate-600 block mb-1">CallMeBot API Key</label>
-          <input id="cf-cmb" type="text" placeholder="es. 1234567"
-                 class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
-        </div>
-        <div>
-          <label class="text-xs font-bold text-slate-600 block mb-1">Piano <span class="text-red-500">*</span></label>
-          <select id="cf-piano" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white">
-            <option value="14.99_basic">Basic 14.99€</option>
-            <option value="24.99_standard">Standard 24.99€</option>
-            <option value="34.99_pro">Pro 34.99€</option>
-            <option value="44.99_business">Business 44.99€</option>
-          </select>
-        </div>
-        <div>
-          <label class="text-xs font-bold text-slate-600 block mb-1">Mesi iniziali</label>
-          <select id="cf-mesi" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white">
-            <option value="1" selected>1 mese</option>
-            <option value="3">3 mesi</option>
-            <option value="6">6 mesi</option>
-            <option value="12">12 mesi</option>
-          </select>
-        </div>
-        <div class="col-span-2">
-          <label class="text-xs font-bold text-slate-600 block mb-1">Indirizzo</label>
-          <input id="cf-indirizzo" type="text" placeholder="Opzionale"
-                 class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
-        </div>
-        <div class="col-span-2">
-          <label class="text-xs font-bold text-slate-600 block mb-1">P.IVA</label>
-          <input id="cf-piva" type="text" placeholder="Opzionale"
-                 class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
-        </div>
-        <div class="col-span-2">
-          <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <label class="flex items-start gap-2.5 cursor-pointer">
-              <input id="cf-archivio-mensile" type="checkbox" class="mt-0.5 w-4 h-4 cursor-pointer">
-              <div>
-                <div class="text-xs font-bold text-slate-800">📋 Archiviazione mensile dello storico</div>
-                <div class="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                  Se attiva, l'app del cliente forza il download mensile del PDF del registro temperature (banner settimanali, blocco a inizio del mese successivo). Da disattivare quando vendi come "allarme monitoraggio frigoriferi" generico.
-                </div>
-              </div>
-            </label>
-          </div>
-        </div>
-      </div>
-      <p id="cf-err" class="text-red-600 text-sm font-medium"></p>
-      <div class="flex gap-2 pt-2">
-        <button onclick="closeModal('modal-create')"
-                class="flex-1 px-4 py-2.5 rounded-md border border-slate-300 hover:bg-slate-50 text-sm font-bold">
-          Annulla
-        </button>
-        <button id="cf-submit" onclick="doCreateClient()"
-                class="flex-[2] px-4 py-2.5 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold">
-          ✓ Crea cliente
-        </button>
-      </div>
+    <div class="field">
+      <label>Note</label>
+      <textarea id="action-note" placeholder="Descrivi l'intervento..."></textarea>
     </div>
+    <div class="field">
+      <label>Responsabile</label>
+      <input type="text" id="action-resp" placeholder="Nome operatore">
+    </div>
+    <button class="btn btn-primary" onclick="saveAction()">✓ Salva azione correttiva</button>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════ -->
-<!-- MODAL: Rinnova                                                 -->
-<!-- ═══════════════════════════════════════════════════════════ -->
-<div id="modal-renew" class="hidden fixed inset-0 bg-black/50 modal-bg flex items-center justify-center p-4 z-40" onclick="closeModalBg(event,'modal-renew')">
-  <div class="bg-white rounded-xl modal-card w-full max-w-md">
-    <div class="p-5 border-b border-slate-200 flex justify-between items-center">
-      <h3 class="font-bold text-lg">↻ Rinnova abbonamento</h3>
-      <button onclick="closeModal('modal-renew')" class="text-slate-400 hover:text-slate-700 text-xl">✕</button>
+<!-- BANNER AVVISO SETTIMANALE (skippabile) -->
+<div id="banner-settimanale" style="display:none;background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;padding:13px 16px;border-radius:10px;margin:0 0 14px;box-shadow:0 4px 12px rgba(217,119,6,.25);">
+  <div style="display:flex;align-items:flex-start;gap:10px;">
+    <div style="font-size:22px;flex-shrink:0;">🖨️</div>
+    <div style="flex:1;">
+      <div style="font-weight:700;font-size:14px;margin-bottom:2px;">Consiglio della settimana</div>
+      <div id="banner-settimanale-sub" style="font-size:11px;opacity:.92;line-height:1.4;">Stampa e firma il registro periodicamente per mantenere lo storico delle temperature sempre archiviato.</div>
     </div>
-    <div class="p-5 space-y-4">
-      <div class="bg-slate-50 rounded-md p-3 text-sm">
-        <div class="font-bold" id="renew-nome">—</div>
-        <div class="text-xs text-slate-500 mt-1">Scadenza attuale: <span id="renew-scadenza-attuale">—</span></div>
-      </div>
-      <div>
-        <p class="text-xs font-bold text-slate-600 mb-2">Aggiungi al periodo attuale:</p>
-        <div class="grid grid-cols-2 gap-2">
-          <button onclick="doRenew(1)"  class="px-4 py-2.5 rounded-md border border-slate-300 hover:bg-blue-50 hover:border-blue-400 text-sm font-bold">+ 1 mese</button>
-          <button onclick="doRenew(3)"  class="px-4 py-2.5 rounded-md border border-slate-300 hover:bg-blue-50 hover:border-blue-400 text-sm font-bold">+ 3 mesi</button>
-          <button onclick="doRenew(6)"  class="px-4 py-2.5 rounded-md border border-slate-300 hover:bg-blue-50 hover:border-blue-400 text-sm font-bold">+ 6 mesi</button>
-          <button onclick="doRenew(12)" class="px-4 py-2.5 rounded-md border border-slate-300 hover:bg-blue-50 hover:border-blue-400 text-sm font-bold">+ 12 mesi</button>
-        </div>
-      </div>
-      <div class="border-t border-slate-200 pt-3">
-        <button onclick="doRenewForever()" class="w-full px-4 py-2.5 rounded-md bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold">
-          ∞ Rinnova "per sempre" (anno 2099)
-        </button>
-      </div>
-    </div>
+  </div>
+  <div style="display:flex;gap:7px;margin-top:10px;">
+    <button onclick="apriReportPerStampa()" style="flex:2;padding:9px;background:#fff;color:#d97706;border:none;border-radius:6px;font-weight:700;font-size:12px;font-family:inherit;cursor:pointer;">📄 Genera ora</button>
+    <button onclick="chiudiBannerSettimanale()" style="flex:1;padding:9px;background:rgba(255,255,255,.18);color:#fff;border:none;border-radius:6px;font-weight:600;font-size:12px;font-family:inherit;cursor:pointer;">✕ Chiudi</button>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════ -->
-<!-- MODAL: Modifica cliente                                       -->
-<!-- ═══════════════════════════════════════════════════════════ -->
-<div id="modal-edit" class="hidden fixed inset-0 bg-black/50 modal-bg flex items-center justify-center p-4 z-40" onclick="closeModalBg(event,'modal-edit')">
-  <div class="bg-white rounded-xl modal-card w-full max-w-md">
-    <div class="p-5 border-b border-slate-200 flex justify-between items-center">
-      <h3 class="font-bold text-lg">✎ Modifica cliente</h3>
-      <button onclick="closeModal('modal-edit')" class="text-slate-400 hover:text-slate-700 text-xl">✕</button>
+<!-- BANNER ULTIMO GIORNO DEL MESE (non skippabile) -->
+<div id="stampa-banner" style="display:none;background:linear-gradient(135deg,#ea580c 0%,#c2410c 100%);color:#fff;padding:13px 16px;border-radius:10px;margin:0 0 14px;box-shadow:0 4px 12px rgba(194,65,12,.35);">
+  <div style="display:flex;align-items:flex-start;gap:10px;">
+    <div style="font-size:22px;flex-shrink:0;">⚠️</div>
+    <div style="flex:1;">
+      <div style="font-weight:700;font-size:14px;margin-bottom:2px;">Ultimo giorno del mese — azione obbligatoria</div>
+      <div id="stampa-banner-sub" style="font-size:11px;opacity:.92;line-height:1.4;">Da domani l'app sarà bloccata finché non scarichi il registro mensile firmato.</div>
     </div>
-    <div class="p-5 space-y-3">
-      <div>
-        <label class="text-xs font-bold text-slate-600 block mb-1">Nome ristorante</label>
-        <input id="ef-nome" type="text" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
-      </div>
-      <div>
-        <label class="text-xs font-bold text-slate-600 block mb-1">Telefono</label>
-        <input id="ef-tel" type="text" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
-      </div>
-      <div>
-        <label class="text-xs font-bold text-slate-600 block mb-1">CallMeBot API Key</label>
-        <input id="ef-cmb" type="text" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
-      </div>
-      <div>
-        <label class="text-xs font-bold text-slate-600 block mb-1">Piano</label>
-        <select id="ef-piano" onchange="toggleWaNotifTipo()" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white">
-          <option value="14.99_basic">Basic 14.99€</option>
-          <option value="24.99_standard">Standard 24.99€</option>
-          <option value="34.99_pro">Pro 34.99€</option>
-          <option value="44.99_business">Business 44.99€</option>
-        </select>
-      </div>
-      <div id="ef-wa-tipo-block" style="display:none">
-        <label class="text-xs font-bold text-slate-600 block mb-1">Tipo notifica WhatsApp</label>
-        <select id="ef-wa-notif-tipo" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white">
-          <option value="solo_messaggio">Solo messaggio</option>
-          <option value="entrambi">Messaggio + Chiamata</option>
-        </select>
-      </div>
-      <div>
-        <label class="text-xs font-bold text-slate-600 block mb-1">Data scadenza</label>
-        <input id="ef-scadenza" type="date" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
-      </div>
-      <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <label class="text-xs font-bold text-blue-900 block mb-1.5">⚙️ Modalità di funzionamento</label>
-        <select id="ef-archivio-mensile" class="w-full px-3 py-2 border border-blue-300 rounded-md text-sm bg-white">
-          <option value="false">🔔 Monitoraggio e allarme (default)</option>
-          <option value="true">📋 Monitoraggio + archiviazione mensile</option>
-        </select>
-        <p class="text-[10px] text-blue-700 mt-1.5 leading-snug">
-          <strong>Monitoraggio e allarme</strong>: solo notifiche temperature fuori soglia, PDF on-demand.<br>
-          <strong>+ Archiviazione mensile</strong>: a fine mese l'app obbliga il cliente a scaricare il registro PDF.
-        </p>
-      </div>
-      <div>
-        <label class="text-xs font-bold text-slate-600 block mb-1">Note interne (visibili solo a te)</label>
-        <textarea id="ef-note" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"></textarea>
-      </div>
-      <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <label class="flex items-start gap-2.5 cursor-pointer">
-          <input id="ef-archivio-mensile" type="checkbox" class="mt-0.5 w-4 h-4 cursor-pointer">
-          <div>
-            <div class="text-xs font-bold text-slate-800">📋 Archiviazione mensile dello storico</div>
-            <div class="text-[11px] text-slate-600 mt-1 leading-relaxed">
-              Se attiva, l'app forza il download mensile del PDF (banner promemoria, blocco a inizio mese successivo). Da disattivare per vendita come "allarme monitoraggio frigoriferi" generico, da attivare per clienti che vogliono uno storico cartaceo firmato.
-            </div>
-          </div>
-        </label>
-      </div>
-      <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
-        <div class="flex justify-between items-center">
-          <div>
-            <label class="text-xs font-bold text-slate-600 block">Sospensioni utilizzate</label>
-            <span id="ef-pause-count" class="text-sm font-bold text-slate-800">0/2</span>
-          </div>
-          <button onclick="doResetPause()" id="ef-pause-btn"
-                  class="px-3 py-1.5 rounded-md border border-amber-300 hover:bg-amber-50 text-amber-700 text-xs font-bold">
-            ↻ Azzera contatore
-          </button>
-        </div>
-      </div>
-      <div class="flex gap-2 pt-2">
-        <button onclick="closeModal('modal-edit')" class="flex-1 px-4 py-2.5 rounded-md border border-slate-300 hover:bg-slate-50 text-sm font-bold">Annulla</button>
-        <button onclick="doSaveEdit()" class="flex-[2] px-4 py-2.5 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold">💾 Salva</button>
-      </div>
-    </div>
+  </div>
+  <div style="display:flex;gap:7px;margin-top:10px;">
+    <button onclick="apriReportPerStampa()" style="flex:1;padding:9px;background:#fff;color:#c2410c;border:none;border-radius:6px;font-weight:700;font-size:12px;font-family:inherit;cursor:pointer;">📥 Scarica ora</button>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════ -->
-<!-- MODAL: QR setup                                               -->
-<!-- ═══════════════════════════════════════════════════════════ -->
-<div id="modal-qr" class="hidden fixed inset-0 bg-black/50 modal-bg flex items-center justify-center p-4 z-40" onclick="closeModalBg(event,'modal-qr')">
-  <div class="bg-white rounded-xl modal-card w-full max-w-sm">
-    <div class="p-5 border-b border-slate-200 flex justify-between items-center">
-      <h3 class="font-bold text-lg">▦ QR Setup Hardware</h3>
-      <button onclick="closeModal('modal-qr')" class="text-slate-400 hover:text-slate-700 text-xl">✕</button>
-    </div>
-    <div class="p-5 text-center">
-      <div id="qr-target" class="inline-block p-3 bg-white rounded-lg border-2 border-slate-200"></div>
-      <p class="text-xs text-slate-500 mt-3">
-        <span id="qr-nome" class="font-bold text-slate-700">—</span><br>
-        Inquadra con un sensore ESP32 per associarlo automaticamente a questo cliente.
+<!-- MODALE BLOCCO MENSILE (non chiudibile senza download PDF) -->
+<div id="modal-blocco-mensile" class="modal-overlay hidden" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);">
+  <div class="modal" style="max-width:400px;border-radius:16px;align-self:center;border-top:5px solid #dc2626;">
+    <div style="text-align:center;padding:8px 0 4px;">
+      <div style="font-size:52px;margin-bottom:10px;">🔒</div>
+      <h3 style="font-size:19px;font-weight:800;color:#dc2626;margin-bottom:6px;">Registro mensile obbligatorio</h3>
+      <p id="blocco-mese-label" style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:6px;font-weight:600;"></p>
+      <p style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:20px;">
+        Per continuare a usare l'app è <strong>obbligatorio</strong> scaricare il PDF del registro del mese precedente e conservarlo firmato dal responsabile. L'archiviazione mensile dello storico delle temperature è parte integrante del servizio.
       </p>
-      <details class="mt-3 text-left">
-        <summary class="text-xs text-slate-500 cursor-pointer hover:text-slate-700">Mostra contenuto QR</summary>
-        <pre id="qr-payload" class="text-[10px] mt-2 p-2 bg-slate-50 rounded font-mono overflow-auto"></pre>
-      </details>
-      <button onclick="downloadQR()" class="mt-4 px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold w-full">
-        ⬇ Scarica PNG
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button onclick="apriReportPerStampa()" style="width:100%;padding:14px;background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer;box-shadow:0 4px 16px rgba(220,38,38,.35);">
+        📥 Scarica il registro — sblocca l'app
       </button>
     </div>
-    <!-- Dispositivi registrati -->
-    <div class="border-t border-slate-200 px-5 pb-5">
-      <div class="flex justify-between items-center pt-4 mb-2">
-        <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wider">Dispositivi registrati</h4>
-        <button onclick="loadDevices(currentQRAziendaId)" class="text-[11px] text-blue-600 hover:underline">↻ Aggiorna</button>
-      </div>
-      <div id="qr-devices-list" class="max-h-48 overflow-y-auto">
-        <p class="text-xs text-slate-400 text-center py-2">—</p>
-      </div>
-    </div>
+    <p style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:14px;opacity:.7;">Non puoi chiudere questa finestra finché non hai scaricato il PDF.</p>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════ -->
-<!-- MODAL: ESP32 (gestione token + mapping sonde)                 -->
-<!-- ═══════════════════════════════════════════════════════════ -->
-<div id="modal-esp" class="hidden fixed inset-0 bg-black/50 modal-bg flex items-center justify-center p-4 z-40" onclick="closeModalBg(event,'modal-esp')">
-  <div class="bg-white rounded-xl modal-card w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-    <div class="p-5 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white z-10">
-      <div class="min-w-0">
-        <h3 class="font-bold text-lg flex items-center gap-2">📡 Sensori ESP32</h3>
-        <div id="esp-cliente-nome" class="text-xs text-slate-500 mt-0.5 truncate">—</div>
-      </div>
-      <button onclick="closeModal('modal-esp')" class="text-slate-400 hover:text-slate-700 text-xl shrink-0">✕</button>
-    </div>
-    <div class="p-5">
-      <p class="text-xs text-slate-500 mb-4 leading-relaxed">
-        Ogni cliente può avere uno o più sensori ESP32. Genera un <b>token univoco</b> per ogni dispositivo,
-        poi incollalo nel pannello di configurazione dell'ESP (sezione <i>Impostazioni → Token dispositivo</i>)
-        oppure usa il QR code per la configurazione rapida.
+<!-- MODALE CONFERMA STAMPA (dopo download PDF in regime normale) -->
+<div id="modal-conferma-stampa" class="modal-overlay hidden">
+  <div class="modal" style="max-width:380px;border-radius:14px;align-self:center;">
+    <div style="text-align:center;padding:8px 0 4px;">
+      <div style="font-size:42px;margin-bottom:8px;">📋</div>
+      <h3 style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:6px;">Hai stampato e firmato?</h3>
+      <p style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:18px;">
+        Conferma di aver stampato il PDF, applicato firma e timbro del responsabile, e archiviato il documento cartaceo.
       </p>
-      <div id="esp-device-list">
-        <div class="text-center py-4 text-slate-400 text-sm">Caricamento…</div>
-      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button onclick="confermaStampaFatta()" style="width:100%;padding:13px;background:linear-gradient(135deg,#1a7a4a 0%,#16a34a 100%);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;font-family:inherit;cursor:pointer;box-shadow:0 4px 12px rgba(22,163,74,.3);">
+        ✓ Sì, ho stampato e firmato
+      </button>
+      <button onclick="rimandaConfermaStampa()" style="width:100%;padding:11px;background:transparent;color:var(--text-muted);border:1px solid var(--border);border-radius:8px;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer;">
+        Non ancora — ricordamelo dopo
+      </button>
     </div>
   </div>
 </div>
 
-<!-- Toast -->
-<div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-md text-white text-sm font-medium shadow-lg z-50"></div>
+<!-- MODALE BLOCCO ACCOUNT IN PAUSA -->
+<div id="modal-pausa-blocco" class="modal-overlay hidden">
+  <div class="modal" style="max-width:380px;border-radius:14px;align-self:center;">
+    <div style="text-align:center;padding:8px 0 4px;">
+      <div style="font-size:48px;margin-bottom:8px;">⏸</div>
+      <h3 style="font-size:18px;font-weight:800;color:#c2410c;margin-bottom:6px;">Operazione non possibile</h3>
+      <p style="font-size:14px;color:var(--text);line-height:1.5;margin-bottom:6px;font-weight:600;">
+        Il tuo abbonamento è in pausa.
+      </p>
+      <p style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:18px;">
+        Durante la pausa puoi consultare i tuoi dati ma non puoi inserirne di nuovi.
+        Riattiva l'abbonamento per riprendere a registrare le temperature.
+      </p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button onclick="vaiAStatoAbbonamento()" style="width:100%;padding:13px;background:linear-gradient(135deg,#1a7a4a 0%,#16a34a 100%);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;font-family:inherit;cursor:pointer;box-shadow:0 4px 12px rgba(22,163,74,.3);">
+        ▶ Riattiva ora
+      </button>
+      <button onclick="chiudiPopupPausa()" style="width:100%;padding:11px;background:transparent;color:var(--text-muted);border:1px solid var(--border);border-radius:8px;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer;">
+        Ho capito, chiudi
+      </button>
+    </div>
+  </div>
+</div>
 
-<script src="admin.js?v=12"></script>
+<!-- DASHBOARD -->
+<div id="screen-dash" class="screen active">
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-label">Rilevazioni oggi</div><div class="stat-value" id="stat-count">—</div></div>
+    <div class="stat-card"><div class="stat-label">Anomalie</div><div class="stat-value err" id="stat-err">—</div></div>
+    <div class="stat-card"><div class="stat-label">Apparecchi OK</div><div class="stat-value ok" id="stat-ok">—</div></div>
+    <div class="stat-card"><div class="stat-label">Ultima ril.</div><div class="stat-value" id="stat-last" style="font-size:17px;padding-top:4px;">—</div></div>
+  </div>
+  <div id="dash-alerts"></div>
+  <div class="section-title">Ultime rilevazioni</div>
+  <div id="dash-recent"><div class="empty-state"><div class="ic">☁️</div><p>Caricamento...</p></div></div>
+</div>
+
+<!-- REGISTRA -->
+<div id="screen-log" class="screen">
+  <div class="area-pills" id="area-pills">
+    <!-- Popolate dinamicamente da renderAreaPills() -->
+  </div>
+  <div id="device-list"></div>
+  <div id="queue-info" class="queue-info"></div>
+</div>
+
+<!-- ORARI -->
+<div id="screen-schedule" class="screen">
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">Sessioni configurate</div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:11px;">Il pallino rosso nell'header si accende se una sessione è in ritardo.</p>
+    <div id="schedule-slots"></div>
+    <div style="display:flex;gap:7px;margin-top:10px;">
+      <input type="time" id="new-slot-time" style="flex:1;">
+      <input type="text" id="new-slot-label" placeholder="Es: Apertura" style="flex:1.5;">
+      <button onclick="addSlot()" style="padding:10px 13px;background:var(--navy);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-weight:700;font-family:inherit;">+</button>
+    </div>
+  </div>
+  <div class="section-title">Stato di oggi</div>
+  <div id="schedule-today"></div>
+</div>
+
+<!-- FIRMA -->
+<div id="screen-firma" class="screen">
+  <div class="card">
+    <div class="section-title" style="margin-top:0;">Operatore di turno</div>
+    <div class="field">
+      <label>Seleziona operatore</label>
+      <div id="operatori-chips" style="margin-bottom:8px;"></div>
+      <input type="text" id="firma-nome-input" placeholder="Oppure scrivi nome e cognome">
+    </div>
+    <div class="field">
+      <label>Data e ora</label>
+      <input type="text" id="firma-data-display" readonly style="background:var(--gray-bg);color:var(--text-muted);">
+    </div>
+    <div class="firma-box">
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:7px;">Firma digitale</p>
+      <canvas id="firma-canvas" width="440" height="110"></canvas>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button onclick="clearFirma()" class="btn btn-outline" style="flex:1;padding:9px;font-size:12px;">✕ Cancella</button>
+        <button onclick="saveFirma()" class="btn btn-primary" style="flex:2;padding:9px;font-size:12px;">✓ Salva firma turno</button>
+      </div>
+    </div>
+    <div class="firma-saved" id="firma-saved-msg">✓ Firma salvata</div>
+  </div>
+  <div class="section-title">Firme di oggi</div>
+  <div id="firme-list"></div>
+</div>
+
+<!-- REPORT -->
+<div id="screen-history" class="screen">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+    <select id="filter-month" onchange="renderHistory()"></select>
+    <select id="filter-area" onchange="updateDeviceFilter()">
+      <!-- Popolate dinamicamente da renderAreaFilterOptions() -->
+      <option value="ALL">Tutte le zone</option>
+    </select>
+  </div>
+  <select id="filter-device" onchange="renderHistory()" style="margin-bottom:8px;"><option value="ALL">Tutti i dispositivi</option></select>
+  <div class="btn-row">
+    <button class="btn btn-outline" id="btn-only-err" onclick="toggleErrFilter()" style="flex:1;padding:9px;font-size:12px;border-width:1.5px;">Solo anomalie</button>
+    <button class="btn btn-success" onclick="exportExcel()" style="flex:1;padding:9px;font-size:12px;">📊 Excel</button>
+  </div>
+  <button class="btn btn-pdf" onclick="exportPDF()" style="margin-bottom:11px;padding:12px;font-size:14px;">📄 Genera PDF registro mensile</button>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div style="max-height:400px;overflow-y:auto;">
+      <table class="hist-table">
+        <thead><tr><th>Data/Ora</th><th>Dispositivo</th><th>°C</th><th>Stato</th></tr></thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </div>
+  </div>
+  <p id="history-count" style="font-size:11px;color:var(--text-muted);text-align:right;margin-top:6px;"></p>
+</div>
+
+<!-- SETUP -->
+<div id="screen-setup" class="screen">
+
+  <!-- Sotto-tab a pillole -->
+  <div id="setup-pills" style="position:sticky;top:88px;z-index:10;background:var(--gray-bg);padding:6px 0;margin-bottom:12px;">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <span class="setup-pill active" onclick="setSetupTab('apparecchi',this)">❄️ Apparecchi</span>
+      <span class="setup-pill" onclick="setSetupTab('zone',this)">📍 Zone</span>
+      <span class="setup-pill" onclick="setSetupTab('anagrafica',this)">🏢 Anagrafica</span>
+      <span class="setup-pill" onclick="setSetupTab('orari',this)">⏰ Orari</span>
+    </div>
+    <div style="display:flex;justify-content:center;margin-top:6px;">
+      <span class="setup-pill" onclick="setSetupTab('zona',this)">🔧 Manutenzione</span>
+    </div>
+  </div>
+
+  <!-- TAB: Apparecchi -->
+  <div id="setup-tab-apparecchi" class="setup-tab active">
+    <div class="section-title" style="margin-top:8px;">Apparecchi configurati</div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+      Aggiungi i frigoriferi e congelatori da monitorare.
+      In futuro potrai associare un sensore ESP32 a ciascuno.
+    </p>
+    <div id="setup-list" style="margin-top:8px;"></div>
+    <div class="setup-form">
+      <div class="field"><label>Nome</label><input type="text" id="new-name" placeholder="Es: Frigo Verdure"></div>
+      <div class="field"><label>Zona</label>
+        <select id="new-area">
+          <!-- Popolate dinamicamente da renderNewAreaSelect() -->
+        </select>
+      </div>
+      <div class="field"><label>Tipo</label>
+        <select id="new-type">
+          <option value="frigo">❄️ Frigo (soglia +4°C)</option>
+          <option value="gelo">🧊 Gelo (soglia -18°C)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="addDevice()">+ Aggiungi apparecchio</button>
+    </div>
+  </div>
+
+  <!-- TAB: Zone -->
+  <div id="setup-tab-zone" class="setup-tab">
+    <div class="section-title" style="margin-top:8px;">📍 Gestione Zone</div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.5;">
+      Le zone separano gli ambienti del tuo locale (es. Cucina, Bar, Cella frigo).
+      Ogni apparecchio viene assegnato a una zona. Non puoi eliminare una zona
+      che ha apparecchi assegnati.
+    </p>
+    <div id="zone-setup-list" style="margin-top:8px;"></div>
+    <div class="setup-form" style="margin-top:10px;">
+      <div class="field"><label>Nome zona</label>
+        <input type="text" id="new-zona-nome" placeholder="Es: Magazzino, Banco pesce…">
+      </div>
+      <div class="field"><label>Emoji (opzionale)</label>
+        <input type="text" id="new-zona-emoji" placeholder="Es: 🐟 🥩 🧊" maxlength="4" style="width:80px;">
+      </div>
+      <button class="btn btn-primary" onclick="addZona()">+ Aggiungi zona</button>
+    </div>
+  </div>
+
+  <!-- TAB: Anagrafica -->
+  <div id="setup-tab-anagrafica" class="setup-tab">
+
+    <div class="section-title" style="margin-top:8px;">⚙️ Modalità di funzionamento</div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+      Configurazione gestita dal fornitore del servizio.
+    </p>
+    <div class="card" style="border-left:3px solid #2563a8;">
+      <div id="modalita-badge" style="display:flex;align-items:center;gap:12px;padding:6px 4px;">
+        <span id="modalita-icon" style="font-size:30px;flex-shrink:0;">🔔</span>
+        <div style="flex:1;">
+          <div id="modalita-titolo" style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px;">Monitoraggio e allarme</div>
+          <div id="modalita-desc" style="font-size:11px;color:var(--text-muted);line-height:1.5;">L'app ti avvisa se le temperature escono dalle soglie. Lo storico è consultabile e il PDF si può scaricare quando vuoi.</div>
+        </div>
+      </div>
+      <p style="font-size:10px;color:var(--text-muted);margin-top:12px;padding-top:10px;border-top:1px solid #e2e8f0;line-height:1.5;opacity:.85;">
+        Per modificare questa impostazione contatta il fornitore del servizio. <strong>FrigoCheck non sostituisce in alcun caso i protocolli HACCP</strong> né le sonde certificate richieste dalla normativa applicabile alla tua attività.
+      </p>
+    </div>
+
+    <div class="section-title" style="margin-top:8px;">📋 Dati azienda</div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+      Verranno usati nelle intestazioni dei documenti ufficiali (PDF, registro, ecc.).
+    </p>
+    <div class="card">
+      <div class="field"><label>Ragione sociale / Nome locale</label><input type="text" id="cfg-azienda" placeholder="Es: Bagno Tahiti di Mario Rossi" oninput="saveCfgLocal()"></div>
+      <div class="field"><label>Indirizzo</label><input type="text" id="cfg-indirizzo" placeholder="Via Roma 1, 20100 Milano" oninput="saveCfgLocal()"></div>
+      <div class="field"><label>P.IVA / C.F.</label><input type="text" id="cfg-piva" placeholder="IT01234567890" oninput="saveCfgLocal()"></div>
+      <div class="field"><label>Telefono</label><input type="text" id="cfg-telefono" placeholder="+39 02 1234567" oninput="saveCfgLocal()"></div>
+      <div class="field"><label>Email</label><input type="text" id="cfg-email" placeholder="info@tuolocale.it" oninput="saveCfgLocal()"></div>
+      <div class="field"><label>Responsabile</label><input type="text" id="cfg-responsabile" placeholder="Nome Cognome del responsabile" oninput="saveCfgLocal()"></div>
+      <div class="field"><label>Numero registrazione sanitaria</label><input type="text" id="cfg-regsanitaria" placeholder="Es: IT 123 CE" oninput="saveCfgLocal()"></div>
+      <div class="field"><label>Data ultima verifica</label><input type="date" id="cfg-dataverifica" oninput="saveCfgLocal()"></div>
+
+      <div id="wa-block">
+      <div class="separator" style="margin:14px 0 10px;"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px;">📲 Notifiche WhatsApp anomalie (CallMeBot)</div>
+      <p style="font-size:10px;color:var(--text-muted);margin-bottom:8px;line-height:1.5;">
+        Quando viene registrata una temperatura fuori soglia, l'app invia una notifica WhatsApp e/o una chiamata vocale automatica (in base al piano attivo).<br>
+        Ottieni l'API key gratis su <strong>callmebot.com</strong> mandando un messaggio su WhatsApp.
+      </p>
+      <div class="field"><label>Numero WhatsApp (es. +391234567890)</label><input type="tel" id="cfg-wa-telefono" placeholder="+391234567890" oninput="saveCfgLocal()"></div>
+      <div class="field"><label>CallMeBot API Key</label><input type="text" id="cfg-wa-apikey" placeholder="123456" oninput="saveCfgLocal()"></div>
+      <div class="field" style="margin-top:8px;">
+        <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:3px;">Tipo di notifica (impostato dal gestore del servizio)</label>
+        <div id="wa-notif-tipo-label" style="font-size:11px;font-weight:700;color:var(--navy);background:var(--bg-card,#f8f9fc);border:1px solid #e2e6ea;border-radius:6px;padding:7px 10px;">📲 Messaggio + 📞 Chiamata vocale</div>
+      </div>
+      </div>
+
+      <button onclick="saveCfgCloud()" style="width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-weight:700;font-family:inherit;margin-top:4px;">☁ Salva dati azienda</button>
+    </div>
+
+    <div class="section-title" style="margin-top:18px;">👥 Operatori</div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+      Lista dei nomi che possono firmare le rilevazioni di temperatura.
+    </p>
+    <div id="operatori-setup-list" style="margin-top:8px;"></div>
+    <div style="display:flex;gap:7px;margin-top:8px;">
+      <input type="text" id="new-operatore" placeholder="Nome operatore" style="flex:1;">
+      <button onclick="addOperatore()" style="padding:10px 13px;background:var(--navy);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-weight:700;font-family:inherit;">+</button>
+    </div>
+
+    <div class="section-title" style="margin-top:22px;">💳 Stato abbonamento</div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+      Puoi mettere in pausa l'abbonamento fino a 2 volte (max 3 mesi a pausa). L'opzione è disponibile entro 1 anno dalla sottoscrizione.
+    </p>
+    <div class="card" id="abbonamento-card">
+      <div id="abb-status-content">
+        <p style="font-size:12px;color:var(--text-muted);">Caricamento stato…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Orari -->
+  <div id="setup-tab-orari" class="setup-tab">
+    <div class="section-title" style="margin-top:8px;">⏰ Promemoria orari</div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+      Definisci gli orari in cui ricordare al personale di registrare le temperature.
+      Il pallino rosso nell'header si accende se una sessione è in ritardo.
+    </p>
+    <div class="card">
+      <div id="schedule-slots-setup"></div>
+      <div style="display:flex;gap:7px;margin-top:8px;">
+        <input type="time" id="new-slot-time2" style="flex:1;">
+        <input type="text" id="new-slot-label2" placeholder="Es: Apertura" style="flex:1.5;">
+        <button onclick="addSlotSetup()" style="padding:10px 13px;background:var(--navy);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-weight:700;font-family:inherit;">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Zona pericolosa -->
+  <div id="setup-tab-zona" class="setup-tab">
+    <div class="section-title" style="margin-top:8px;">🔧 Manutenzione</div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">
+      Le operazioni qui sotto sono <b>irreversibili</b> e cancellano <b>solo i dati della tua azienda</b>.
+      I dati degli altri clienti del servizio non vengono toccati.
+    </p>
+
+    <div class="card" style="border-left:3px solid #e53935;">
+      <h4 style="font-size:13px;font-weight:700;color:var(--red);margin:0 0 6px;">🗑️ Elimina tutte le registrazioni</h4>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">
+        Cancella temperature, azioni correttive e firme. Apparecchi, operatori, configurazione e orari restano.
+      </p>
+      <button onclick="resetRegistrazioni()" style="width:auto;padding:11px 28px;background:#e53935;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-weight:700;font-size:13px;font-family:inherit;display:block;margin:0 auto;">
+        Elimina registrazioni
+      </button>
+    </div>
+
+    <div class="card" style="border-left:3px solid #b71c1c;margin-top:8px;">
+      <h4 style="font-size:13px;font-weight:700;color:#b71c1c;margin:0 0 6px;">⚠️ Reset completo</h4>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">
+        Cancella <b>tutto</b>: registrazioni, apparecchi, operatori, slot orari, dati anagrafici. L'account resta attivo ma vuoto.
+      </p>
+      <button onclick="resetTutto()" style="width:auto;padding:11px 28px;background:#b71c1c;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;font-weight:700;font-size:13px;font-family:inherit;display:block;margin:0 auto;">
+        Reset completo
+      </button>
+    </div>
+
+    <div class="separator" style="margin:16px 0;"></div>
+    <p style="font-size:10px;color:var(--text-muted);background:var(--blue-light);padding:8px;border-radius:6px;line-height:1.6;">
+      ☁ Database: Supabase &nbsp;·&nbsp; Per cambiare password usa il link "Password dimenticata?" dalla schermata di login
+    </p>
+    <p class="sync-info" id="last-sync-label"></p>
+
+  </div>
+
+</div>
+
+<!-- MODAL NOTE LEGALI (consultabile dopo il login) -->
+<div id="modal-note-legali" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 48px rgba(0,0,0,0.25);">
+    <div style="position:sticky;top:0;background:#fff;padding:16px 20px 12px;border-bottom:1px solid #e5e7eb;border-radius:16px 16px 0 0;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:#1e293b;">⚖️ Informativa e Dichiarazione di Responsabilità</div>
+        <div style="font-size:11px;color:#64748b;margin-top:2px;">FrigoCheck · Sistema monitoraggio temperature</div>
+      </div>
+      <button onclick="document.getElementById('modal-note-legali').style.display='none'" style="background:#f1f5f9;border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:18px;color:#64748b;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div style="padding:20px;font-size:12px;line-height:1.7;color:#374151;">
+      <p style="margin-bottom:12px;">Benvenuto in <strong>FrigoCheck</strong>, sistema di supporto al monitoraggio e controllo delle temperature dei frigoriferi e degli apparecchi refrigeranti. L'applicazione consente la raccolta, l'archiviazione e la stampa periodica dello storico delle rilevazioni di temperatura.</p>
+      <p style="margin-bottom:12px;">FrigoCheck è uno <strong>strumento di supporto operativo</strong> e <strong>non si sostituisce ai protocolli HACCP</strong> né alle procedure di autocontrollo aziendale previste dalla normativa vigente. Le rilevazioni effettuate tramite l'applicazione non sostituiscono in alcun modo le misurazioni eseguite con sonde certificate, ove queste siano richieste dalla normativa applicabile all'attività. La responsabilità della sicurezza alimentare e della conformità ai protocolli HACCP resta in capo al Responsabile dell'attività.</p>
+
+      <div style="background:#f8fafc;border-left:3px solid #1e40af;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#1e293b;margin-bottom:4px;">📋 Ruolo dell'Applicativo</div>
+        Il software funge esclusivamente da <strong>supporto digitale</strong> per la raccolta e l'archiviazione dei dati di temperatura. L'utilizzo dell'applicazione non sostituisce la figura del Responsabile dell'attività, il quale resta l'unico garante della corretta gestione operativa e della sicurezza alimentare dinanzi alle autorità competenti.
+      </div>
+
+      <div style="background:#f8fafc;border-left:3px solid #1e40af;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#1e293b;margin-bottom:4px;">👁 Responsabilità della Vigilanza</div>
+        È responsabilità esclusiva del titolare della struttura assicurarsi della corretta esecuzione delle procedure di monitoraggio. L'applicazione <strong>non solleva l'operatore</strong> dall'obbligo di verifica visiva e manuale qualora le circostanze lo richiedano.
+      </div>
+
+      <div style="background:#f8fafc;border-left:3px solid #1e40af;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#1e293b;margin-bottom:4px;">📡 Connettività e Sensori Wireless</div>
+        In caso di utilizzo di sensori wireless o sistemi di monitoraggio remoto, il corretto funzionamento degli stessi è strettamente dipendente dalla <strong>stabilità della rete locale</strong> (Wi-Fi/Ethernet) e della copertura internet della struttura.
+      </div>
+
+      <div style="background:#fff7ed;border-left:3px solid #ea580c;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:12px;">
+        <div style="font-weight:700;color:#9a3412;margin-bottom:6px;">⚠️ Esclusione di Responsabilità per Disservizi Tecnici</div>
+        Lo sviluppatore e la proprietà dell'applicazione <strong>non potranno essere ritenuti responsabili</strong> per mancate rilevazioni, assenza di dati o mancata ricezione di notifiche di allarme derivanti da:
+        <ul style="margin:8px 0 0 16px;line-height:1.9;">
+          <li>Assenza o instabilità della connessione di rete;</li>
+          <li>Malfunzionamento dell'hardware (router, sensori, batterie scariche);</li>
+          <li>Cause di forza maggiore che impediscano la trasmissione telematica dei dati.</li>
+        </ul>
+      </div>
+
+      <p style="font-size:11px;color:#64748b;line-height:1.6;">Il Responsabile della struttura si impegna a <strong>verificare periodicamente</strong> l'integrità del sistema di monitoraggio e la corretta registrazione dei dati nel registro digitale.</p>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid #e5e7eb;text-align:right;">
+      <button onclick="document.getElementById('modal-note-legali').style.display='none'" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit;">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-wrap"></div>
+
+
+    <script src="app.js"></script>
+    <script>
+      // Aggiorna label modale blocco con il mese corretto
+      document.addEventListener('DOMContentLoaded', function() {
+        const lbl = document.getElementById('blocco-mese-label');
+        if (lbl) {
+          const prev = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+          lbl.textContent = 'Il registro di ' + prev.toLocaleString('it-IT', { month: 'long', year: 'numeric' }) + ' non è ancora stato scaricato.';
+        }
+      });
+    </script>
 </body>
 </html>
