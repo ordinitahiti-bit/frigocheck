@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// sw-haccp.js — Service Worker HACCP Pro Cloud
+// sw-haccp.js — Service Worker FrigoCheck
 // ───────────────────────────────────────────────────────────────
 // Invia una notifica push l'ULTIMO GIORNO del mese alle 9:00,
 // anche se l'app è chiusa o il telefono è bloccato.
@@ -62,7 +62,15 @@ self.addEventListener('message', async event => {
     await dbSet('alarm_timestamp', timestamp);
     await dbSet('alarm_mese', mese);
     await dbSet('alarm_fired', false);
-    console.log('[SW HACCP] Notifica mensile programmata per:', new Date(timestamp).toLocaleString('it-IT'));
+    console.log('[SW FrigoCheck] Notifica mensile programmata per:', new Date(timestamp).toLocaleString('it-IT'));
+  }
+
+  if (type === 'CANCEL_NOTIFICA_MENSILE') {
+    // Cancella qualsiasi notifica mensile precedentemente programmata
+    await dbSet('alarm_timestamp', 0);
+    await dbSet('alarm_mese', '');
+    await dbSet('alarm_fired', true);
+    console.log('[SW FrigoCheck] Notifica mensile cancellata');
   }
 
   if (type === 'PING') {
@@ -88,7 +96,7 @@ async function checkAlarm() {
   if (now >= timestamp && now <= timestamp + 4 * 3600 * 1000) {
     const mese = (await dbGet('alarm_mese')) || 'questo mese';
     await dbSet('alarm_fired', true);
-    await self.registration.showNotification('📋 HACCP — Registro mensile', {
+    await self.registration.showNotification('📋 FrigoCheck — Registro mensile', {
       body: `Oggi è l'ultimo giorno di ${mese}. Domani l'app sarà bloccata: scarica il registro e fallo firmare al responsabile.`,
       icon: '/haccp.png',
       badge: '/haccp.png',
