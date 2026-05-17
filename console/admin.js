@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════
-// HACCP Pro · Admin Dashboard
+// FrigoCheck · Admin Dashboard
 // Versione con mapping sonde ESP32 → apparecchi
 // + Log ricezione ESP per cliente
 // + Cestino / ripristino registrazioni
@@ -92,7 +92,7 @@ async function callAdminApi(action, body = {}) {
 }
 
 async function loadClients() {
-  document.getElementById('clienti-body').innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400 text-sm">Caricamento…</td></tr>';
+  document.getElementById('clienti-body').innerHTML = '<tr><td colspan="9" class="p-8 text-center text-slate-400 text-sm">Caricamento…</td></tr>';
   try {
     const { clients } = await callAdminApi('list_clients');
     allClients = clients || [];
@@ -102,7 +102,7 @@ async function loadClients() {
   } catch(e) {
     console.error(e);
     showToast('Errore: ' + e.message, 'error');
-    document.getElementById('clienti-body').innerHTML = `<tr><td colspan="8" class="p-8 text-center text-red-500 text-sm">${e.message}</td></tr>`;
+    document.getElementById('clienti-body').innerHTML = `<tr><td colspan="9" class="p-8 text-center text-red-500 text-sm">${e.message}</td></tr>`;
   }
 }
 
@@ -126,7 +126,7 @@ function renderTable() {
     if (q && !((c.nome_ristorante || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q) || (c.telefono_whatsapp || '').toLowerCase().includes(q))) return false;
     return true;
   });
-  if (!filtered.length) { body.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400 text-sm">Nessun cliente trovato</td></tr>'; return; }
+  if (!filtered.length) { body.innerHTML = '<tr><td colspan="9" class="p-8 text-center text-slate-400 text-sm">Nessun cliente trovato</td></tr>'; return; }
   body.innerHTML = filtered.map(c => {
     const piano = pianoBadge(c.piano_abbonamento);
     const stBadge = c.stato === 'attivo' ? '<span class="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-[11px] font-bold">attivo</span>' : (c.stato === 'in_scadenza' ? '<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[11px] font-bold">in scadenza</span>' : '<span class="bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-[11px] font-bold">scaduto</span>');
@@ -142,10 +142,15 @@ function renderTable() {
       const tone = pauseN >= 2 ? 'bg-red-50 text-red-700' : pauseN === 1 ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-600';
       pauseBadge = `<span class="${tone} px-2 py-0.5 rounded-full text-[11px] font-bold">${pauseN}/2</span>`;
     }
+    const archAttivo = c.archivio_mensile === true;
+    const modalBadge = archAttivo
+      ? '<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-[11px] font-bold" title="L\'app forza il download mensile del registro PDF">📋 Archivio mensile</span>'
+      : '<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-[11px] font-bold" title="L\'app funziona come allarme/monitoraggio puro">🔔 Solo allarme</span>';
     return `<tr class="border-b border-slate-100 hover:bg-slate-50">
       <td class="py-2.5 px-3"><div class="font-semibold text-slate-900">${escapeHtml(c.nome_ristorante || '—')}</div><div class="text-[11px] text-slate-500 md:hidden">${escapeHtml(c.email || '')}</div>${c.telefono_whatsapp ? `<div class="text-[11px] text-slate-400">📱 ${escapeHtml(c.telefono_whatsapp)}</div>` : ''}</td>
       <td class="py-2.5 px-3 text-slate-600 hidden md:table-cell">${escapeHtml(c.email || '—')}</td>
       <td class="py-2.5 px-3">${piano}</td>
+      <td class="py-2.5 px-3 hidden lg:table-cell">${modalBadge}</td>
       <td class="py-2.5 px-3">${pauseBadge}</td>
       <td class="py-2.5 px-3"><div class="text-slate-700">${dataIT}</div><div class="text-[11px] text-slate-500">${giorniLbl}</div></td>
       <td class="py-2.5 px-3">${stBadge}</td>
@@ -371,6 +376,8 @@ function openCreateModal() {
   ['cf-email','cf-pass','cf-nome','cf-tel','cf-cmb','cf-indirizzo','cf-piva'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('cf-piano').value = '14.99_basic';
   document.getElementById('cf-mesi').value = '1';
+  const arch = document.getElementById('cf-archivio-mensile');
+  if (arch) arch.checked = false; // Default: modalità "solo allarme"
   document.getElementById('cf-err').textContent = '';
   document.getElementById('cf-pass').value = generatePassword();
   document.getElementById('modal-create').classList.remove('hidden');
@@ -398,6 +405,7 @@ async function doCreateClient() {
     mesi_iniziali: parseInt(document.getElementById('cf-mesi').value),
     indirizzo: document.getElementById('cf-indirizzo').value.trim(),
     piva: document.getElementById('cf-piva').value.trim(),
+    archivio_mensile: !!document.getElementById('cf-archivio-mensile').checked,
   };
   if (!payload.email || !payload.password || !payload.nome_ristorante) { err.textContent = 'Compila i campi obbligatori (*)'; return; }
   if (payload.password.length < 8) { err.textContent = 'Password troppo corta (min 8 caratteri)'; return; }
@@ -456,6 +464,10 @@ function openEditModal(userId) {
   const waNotifTipo = document.getElementById('ef-wa-notif-tipo');
   if (waNotifTipo) waNotifTipo.value = c.wa_notif_tipo || 'entrambi';
   document.getElementById('ef-note').value = c.note_admin || '';
+  const efArch = document.getElementById('ef-archivio-mensile');
+  if (efArch) efArch.value = (c.archivio_mensile === true) ? 'true' : 'false';
+  const archEdit = document.getElementById('ef-archivio-mensile');
+  if (archEdit) archEdit.checked = (c.archivio_mensile === true);
   const pauseN = c.pause_utilizzate || 0;
   document.getElementById('ef-pause-count').textContent = pauseN + '/2';
   const pauseBtn = document.getElementById('ef-pause-btn');
@@ -488,6 +500,7 @@ async function doSaveEdit() {
     piano_abbonamento: document.getElementById('ef-piano').value,
     wa_notif_tipo: (waEl && pianoHasWA(document.getElementById('ef-piano').value)) ? waEl.value : 'entrambi',
     note_admin: document.getElementById('ef-note').value,
+    archivio_mensile: document.getElementById('ef-archivio-mensile').value === 'true',
   };
   const scadEl = document.getElementById('ef-scadenza');
   if (scadEl) {
@@ -543,7 +556,7 @@ async function openQRModal(userId) {
 
 function downloadQR() {
   const canvas = document.querySelector('#qr-target canvas');
-  if (canvas) { const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = `qr-haccp-${Date.now()}.png`; a.click(); return; }
+  if (canvas) { const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = `qr-frigocheck-${Date.now()}.png`; a.click(); return; }
   const img = document.querySelector('#qr-target img');
   if (img) { window.open(img.src, '_blank'); showToast('Immagine aperta — usa "Salva con nome"', 'info'); return; }
   showToast('QR non disponibile per il download', 'error');
@@ -564,7 +577,7 @@ async function doResetPassword(userId) {
 async function doDeleteClient(userId) {
   const c = allClients.find(x => x.user_id === userId);
   if (!c) return;
-  if (!confirm(`⚠️ ATTENZIONE — ELIMINAZIONE PERMANENTE\n\nStai per cancellare:\n• ${c.nome_ristorante}\n• ${c.email}\n• Tutti i dati HACCP\n\nContinuare?`)) return;
+  if (!confirm(`⚠️ ATTENZIONE — ELIMINAZIONE PERMANENTE\n\nStai per cancellare:\n• ${c.nome_ristorante}\n• ${c.email}\n• Tutti i dati e le rilevazioni del cliente\n\nContinuare?`)) return;
   const conferma = prompt(`Per confermare, digita esattamente: ELIMINA`);
   if (conferma !== 'ELIMINA') { showToast('Eliminazione annullata', 'warning'); return; }
   try {

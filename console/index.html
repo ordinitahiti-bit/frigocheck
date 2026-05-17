@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HACCP Pro · Admin Dashboard</title>
+<title>FrigoCheck · Admin Dashboard</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -47,7 +47,7 @@
         Accedi →
       </button>
     </div>
-    <p class="text-white/40 text-[11px] text-center mt-5">HACCP Pro Cloud · Admin v1</p>
+    <p class="text-white/40 text-[11px] text-center mt-5">FrigoCheck · Admin v1</p>
   </div>
 </div>
 
@@ -59,7 +59,7 @@
   <!-- Header -->
   <div class="nav-grad text-white px-5 py-3 flex justify-between items-center shadow">
     <div>
-      <div class="text-base font-bold">HACCP Pro · Admin</div>
+      <div class="text-base font-bold">FrigoCheck · Admin</div>
       <div id="user-info" class="text-xs opacity-70">—</div>
     </div>
     <div class="flex items-center gap-2">
@@ -138,6 +138,7 @@
                 <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Ristorante</th>
                 <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden md:table-cell">Email</th>
                 <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Piano</th>
+                <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Modalità</th>
                 <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pausa</th>
                 <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Scadenza</th>
                 <th class="py-3 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Stato</th>
@@ -399,6 +400,19 @@
           <input id="cf-piva" type="text" placeholder="Opzionale"
                  class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
         </div>
+        <div class="col-span-2">
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <label class="flex items-start gap-2.5 cursor-pointer">
+              <input id="cf-archivio-mensile" type="checkbox" class="mt-0.5 w-4 h-4 cursor-pointer">
+              <div>
+                <div class="text-xs font-bold text-slate-800">📋 Archiviazione mensile dello storico</div>
+                <div class="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                  Se attiva, l'app del cliente forza il download mensile del PDF del registro temperature (banner settimanali, blocco a inizio del mese successivo). Da disattivare quando vendi come "allarme monitoraggio frigoriferi" generico.
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
       </div>
       <p id="cf-err" class="text-red-600 text-sm font-medium"></p>
       <div class="flex gap-2 pt-2">
@@ -489,9 +503,31 @@
         <label class="text-xs font-bold text-slate-600 block mb-1">Data scadenza</label>
         <input id="ef-scadenza" type="date" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm">
       </div>
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <label class="text-xs font-bold text-blue-900 block mb-1.5">⚙️ Modalità di funzionamento</label>
+        <select id="ef-archivio-mensile" class="w-full px-3 py-2 border border-blue-300 rounded-md text-sm bg-white">
+          <option value="false">🔔 Monitoraggio e allarme (default)</option>
+          <option value="true">📋 Monitoraggio + archiviazione mensile</option>
+        </select>
+        <p class="text-[10px] text-blue-700 mt-1.5 leading-snug">
+          <strong>Monitoraggio e allarme</strong>: solo notifiche temperature fuori soglia, PDF on-demand.<br>
+          <strong>+ Archiviazione mensile</strong>: a fine mese l'app obbliga il cliente a scaricare il registro PDF.
+        </p>
+      </div>
       <div>
         <label class="text-xs font-bold text-slate-600 block mb-1">Note interne (visibili solo a te)</label>
         <textarea id="ef-note" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"></textarea>
+      </div>
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <label class="flex items-start gap-2.5 cursor-pointer">
+          <input id="ef-archivio-mensile" type="checkbox" class="mt-0.5 w-4 h-4 cursor-pointer">
+          <div>
+            <div class="text-xs font-bold text-slate-800">📋 Archiviazione mensile dello storico</div>
+            <div class="text-[11px] text-slate-600 mt-1 leading-relaxed">
+              Se attiva, l'app forza il download mensile del PDF (banner promemoria, blocco a inizio mese successivo). Da disattivare per vendita come "allarme monitoraggio frigoriferi" generico, da attivare per clienti che vogliono uno storico cartaceo firmato.
+            </div>
+          </div>
+        </label>
       </div>
       <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
         <div class="flex justify-between items-center">
