@@ -466,8 +466,6 @@ function openEditModal(userId) {
   document.getElementById('ef-note').value = c.note_admin || '';
   const efArch = document.getElementById('ef-archivio-mensile');
   if (efArch) efArch.value = (c.archivio_mensile === true) ? 'true' : 'false';
-  const archEdit = document.getElementById('ef-archivio-mensile');
-  if (archEdit) archEdit.checked = (c.archivio_mensile === true);
   const pauseN = c.pause_utilizzate || 0;
   document.getElementById('ef-pause-count').textContent = pauseN + '/2';
   const pauseBtn = document.getElementById('ef-pause-btn');
