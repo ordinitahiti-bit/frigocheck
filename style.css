@@ -321,3 +321,12 @@ textarea { resize:vertical; min-height:68px; }
 .switch input:checked + .slider { background:#2563a8; }
 .switch input:checked + .slider::before { transform:translateX(20px); }
 .switch input:focus-visible + .slider { box-shadow:0 0 0 3px rgba(37,99,168,.25); }
+
+/* ── Badge batteria nelle tile dispositivi ── */
+.batt-badge {
+  display:inline-block;
+  font-weight:600;
+  font-size:11px;
+  letter-spacing:.2px;
+  white-space:nowrap;
+}
