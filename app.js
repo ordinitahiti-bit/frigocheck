@@ -25,6 +25,11 @@ let aziendaCfg    = {};
 let cloudData     = [];
 let cloudAzioni   = [];
 let cloudFirme    = [];
+// Stato batteria dei device ESP32 dell'azienda.
+// deviceBattery: array di {device_token_id, battery_pct, last_reading_at, last_alert_threshold}
+// batteryByApparecchio: mappa "nomeApparecchio" → % batteria del device che lo gestisce
+let deviceBattery       = [];
+let batteryByApparecchio = {};
 let lastTemps     = JSON.parse(localStorage.getItem('h_lasttemps')) || {};
 let offlineQueue  = JSON.parse(localStorage.getItem('h_queue'))     || [];
 let corrective    = {};
@@ -332,6 +337,7 @@ async function syncAll() {
       setLoadingMsg('Scarico temperature...'); await pullTemperature();
       setLoadingMsg('Scarico azioni...');      await pullAzioni();
       setLoadingMsg('Scarico firme...');       await pullFirme();
+      setLoadingMsg('Scarico stato batterie...'); await pullDeviceBattery();
       saveAllLocal();
     } catch(e) { console.error('[Sync]', e); loadFromLocal(); }
   } else loadFromLocal();
@@ -350,6 +356,8 @@ function loadFromLocal() {
   cloudData     = sg('h_clouddata', []); if(!Array.isArray(cloudData))   cloudData=[];
   cloudAzioni   = sg('h_azioni',    []); if(!Array.isArray(cloudAzioni)) cloudAzioni=[];
   cloudFirme    = sg('h_firme',     []); if(!Array.isArray(cloudFirme))  cloudFirme=[];
+  deviceBattery       = sg('h_batt_dev', []); if(!Array.isArray(deviceBattery)) deviceBattery=[];
+  batteryByApparecchio = sg('h_batt_map', {}); if(typeof batteryByApparecchio !== 'object' || batteryByApparecchio === null) batteryByApparecchio={};
   buildCorrective();
 }
 
@@ -362,6 +370,8 @@ function saveAllLocal() {
   localStorage.setItem('h_clouddata', JSON.stringify(cloudData));
   localStorage.setItem('h_azioni',    JSON.stringify(cloudAzioni));
   localStorage.setItem('h_firme',     JSON.stringify(cloudFirme));
+  localStorage.setItem('h_batt_dev',  JSON.stringify(deviceBattery));
+  localStorage.setItem('h_batt_map',  JSON.stringify(batteryByApparecchio));
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -372,6 +382,61 @@ async function pullAzienda() {
   if (error) throw error;
   aziendaCfg = data || {};
   if (aziendaCfg.dataverifica === null) aziendaCfg.dataverifica = '';
+}
+
+// ─── STATO BATTERIA DEVICE ESP32 ───────────────────────────────
+// Carica lo stato corrente delle batterie dei device dell'azienda
+// e costruisce una mappa "nomeApparecchio → % batteria" usando il
+// mapping device_token_sonde (1 device → N sonde → N apparecchi).
+async function pullDeviceBattery() {
+  try {
+    // 1) Stato batteria corrente di ogni device dell'azienda
+    const { data: batteries, error: errB } = await sb
+      .from('device_battery_status')
+      .select('device_token_id, battery_pct, last_reading_at, last_alert_threshold')
+      .eq('azienda_id', currentAziendaId);
+    if (errB) { console.warn('[pullDeviceBattery] battery_status:', errB); deviceBattery = []; return; }
+    deviceBattery = batteries || [];
+
+    if (deviceBattery.length === 0) {
+      batteryByApparecchio = {};
+      return;
+    }
+
+    // 2) Mappa sonde → device (sapere quale device gestisce quale apparecchio)
+    const tokenIds = deviceBattery.map(b => b.device_token_id);
+    const { data: mappings, error: errM } = await sb
+      .from('device_token_sonde')
+      .select('token_id, apparecchio_id, apparecchio_fw')
+      .eq('azienda_id', currentAziendaId)
+      .in('token_id', tokenIds);
+    if (errM) { console.warn('[pullDeviceBattery] token_sonde:', errM); batteryByApparecchio = {}; return; }
+
+    // 3) Mappa apparecchio_id → nome (dagli apparecchi già caricati)
+    const idToName = {};
+    if (Array.isArray(config)) {
+      config.forEach(a => { if (a.id) idToName[a.id] = a.name; });
+    }
+
+    // 4) Mappa device_token_id → battery_pct
+    const tokenToBatt = {};
+    deviceBattery.forEach(b => { tokenToBatt[b.device_token_id] = b.battery_pct; });
+
+    // 5) Costruisci la mappa nomeApparecchio → battery_pct
+    const result = {};
+    (mappings || []).forEach(m => {
+      const pct = tokenToBatt[m.token_id];
+      if (pct == null) return;
+      // Risolvi il nome: prima da apparecchio_id (sorgente canonica), fallback apparecchio_fw
+      const name = (m.apparecchio_id && idToName[m.apparecchio_id]) || m.apparecchio_fw;
+      if (name) result[name] = pct;
+    });
+    batteryByApparecchio = result;
+  } catch (e) {
+    console.warn('[pullDeviceBattery] errore:', e);
+    deviceBattery = [];
+    batteryByApparecchio = {};
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -548,11 +613,14 @@ async function deleteZona(i) {
 
 async function pullApparecchi() {
   const { data, error } = await sb.from('apparecchi')
-    .select('id, name, type, area')
+    .select('id, name, type, area, soglia_max, soglia_min')
     .eq('azienda_id', currentAziendaId)
     .order('area').order('name');
   if (error) throw error;
-  config = (data || []).map(r => ({ id:r.id, name:r.name, type:r.type, area:r.area }));
+  config = (data || []).map(r => ({
+    id: r.id, name: r.name, type: r.type, area: r.area,
+    soglia_max: r.soglia_max, soglia_min: r.soglia_min,
+  }));
 }
 
 async function pullOperatori() {
@@ -702,6 +770,64 @@ function applyConfig() {
   }
   // Aggiorna il badge informativo "Modalità di funzionamento" (read-only lato cliente)
   if (typeof aggiornaUIArchivioMensile === 'function') aggiornaUIArchivioMensile();
+  // Aggiorna la lista stato batterie dispositivi nelle Impostazioni
+  if (typeof renderDeviceBatteryList === 'function') renderDeviceBatteryList();
+}
+
+// ─── RENDER LISTA STATO BATTERIE NELLE IMPOSTAZIONI ─────────────
+// Mostra una riga per ciascun device ESP32 dell'azienda con la sua %
+// di carica, ultima lettura, e gli apparecchi che gestisce.
+function renderDeviceBatteryList() {
+  const container = document.getElementById('device-battery-list');
+  if (!container) return;
+
+  if (!Array.isArray(deviceBattery) || deviceBattery.length === 0) {
+    container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:6px 0;">Nessun dispositivo ESP32 ha ancora inviato dati di batteria.</div>';
+    return;
+  }
+
+  // Per ogni device costruisci l'elenco degli apparecchi serviti
+  // (ricava dai mapping in batteryByApparecchio, raggruppando per device_token_id)
+  // Per semplicità mostriamo solo le info che già abbiamo: % batteria + ultima lettura.
+  // Gli apparecchi serviti li ricaviamo cercando nella mappa quelli che hanno la stessa % e ultima lettura del device.
+  // (Approccio robusto: mostriamo i nomi degli apparecchi del config con la stessa pct)
+  let html = '';
+  deviceBattery
+    .slice()
+    .sort((a, b) => (a.battery_pct ?? 999) - (b.battery_pct ?? 999))
+    .forEach((d, idx) => {
+      const pct = d.battery_pct;
+      const battHtml = batteryIconHtml(pct);
+      const ts = d.last_reading_at ? new Date(d.last_reading_at) : null;
+      const tsStr = ts ? ts.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+      // Apparecchi che usano questo device: scansiona batteryByApparecchio
+      // (è una mappa nome→pct, quindi non basta. Ma il caso comune è 1 device = N apparecchi
+      // con stessa pct, quindi mostriamo i nomi che hanno questa pct ESATTA)
+      const apparecchiServiti = Object.keys(batteryByApparecchio)
+        .filter(name => batteryByApparecchio[name] === pct)
+        .slice(0, 5);
+      const isLast = (idx === deviceBattery.length - 1);
+      let warning = '';
+      if (pct != null && pct < 20) {
+        warning = '<div style="font-size:10px;color:#dc2626;margin-top:3px;font-weight:600;">⚠ Sostituire batteria a breve</div>';
+      } else if (pct != null && pct < 30) {
+        warning = '<div style="font-size:10px;color:#ea580c;margin-top:3px;">⚠ Batteria bassa</div>';
+      }
+      html += `
+        <div style="padding:8px 0;${isLast ? '' : 'border-bottom:1px solid #e5e7eb;'}">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <div style="font-size:12px;font-weight:600;color:var(--navy);">
+              Dispositivo ${idx + 1}
+            </div>
+            <div>${battHtml || '<span style="font-size:11px;color:var(--text-muted);">— %</span>'}</div>
+          </div>
+          ${apparecchiServiti.length ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${apparecchiServiti.join(', ')}</div>` : ''}
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">Ultima lettura: ${tsStr}</div>
+          ${warning}
+        </div>
+      `;
+    });
+  container.innerHTML = html;
 }
 
 function renderAll() {
@@ -960,6 +1086,21 @@ function vaiAStatoAbbonamento() {
   }, 150);
 }
 
+// ─── HELPER ICONA BATTERIA ─────────────────────────────────────
+// Genera un piccolo badge HTML con icona e colore basato sulla %.
+// Restituisce stringa vuota se la batteria non è disponibile.
+//   ≥60% verde, 30-59% giallo, 10-29% arancione, <10% rosso, null = nessuna icona
+function batteryIconHtml(pct) {
+  if (pct == null || isNaN(pct)) return '';
+  const p = Math.max(0, Math.min(100, Math.round(pct)));
+  let color, icon;
+  if (p >= 60)      { color = '#16a34a'; icon = '🔋'; }      // verde
+  else if (p >= 30) { color = '#ca8a04'; icon = '🔋'; }      // giallo
+  else if (p >= 10) { color = '#ea580c'; icon = '🪫'; }      // arancione
+  else              { color = '#dc2626'; icon = '🪫'; }      // rosso
+  return `<span class="batt-badge" style="color:${color};" title="Batteria sensore: ${p}%">${icon} ${p}%</span>`;
+}
+
 function renderDevices() {
   const list = document.getElementById('device-list');
   if (!list) return;
@@ -982,7 +1123,9 @@ function renderDevices() {
     const last = cloudLast
       ? { temp: parseFloat(cloudLast[4]), ok: cloudLast[5] === 'OK' }
       : lastTemps[item.name];
-    const soglia = item.type === 'frigo' ? '+4°C' : '-18°C';
+    const defaultSoglia = item.type === 'frigo' ? 4 : -18;
+    const sogliaEff = (item.soglia_max !== null && item.soglia_max !== undefined) ? item.soglia_max : defaultSoglia;
+    const soglia = (sogliaEff >= 0 ? '+' : '') + sogliaEff + '°C';
     const lastTxt = last ? ('Ult: ' + last.temp + '° ' + (last.ok ? '✓' : '⚠')) : 'Nessuna ril.';
     const id = item.name.replace(/[^a-z0-9]/gi, '_');
     const row = document.createElement('div');
@@ -993,7 +1136,10 @@ function renderDevices() {
     const info = document.createElement('div');
     info.style.cssText = 'flex:1;min-width:0;';
     const nameEl = document.createElement('div'); nameEl.className = 'device-name'; nameEl.textContent = item.name;
-    const metaEl = document.createElement('div'); metaEl.className = 'device-meta'; metaEl.textContent = 'Soglia ' + soglia + ' · ' + lastTxt;
+    const metaEl = document.createElement('div'); metaEl.className = 'device-meta';
+    const battPct = batteryByApparecchio[item.name];
+    const battHtml = batteryIconHtml(battPct);
+    metaEl.innerHTML = 'Soglia ' + soglia + ' · ' + lastTxt + (battHtml ? ' · ' + battHtml : '');
     const warnEl = document.createElement('div'); warnEl.className = 'temp-warn'; warnEl.id = 'tw-' + id; warnEl.textContent = '⚠ Fuori soglia!';
     info.appendChild(nameEl); info.appendChild(metaEl); info.appendChild(warnEl);
     const right = document.createElement('div'); right.className = 'device-right';
@@ -1016,7 +1162,12 @@ function checkWarn(name, type, el) {
   const w  = document.getElementById('tw-'+id);
   if (!w) return;
   if (isNaN(v)) { w.classList.remove('on'); el.classList.remove('warn'); return; }
-  const out = (type==='frigo'&&v>4)||(type==='gelo'&&v>-18);
+  // Usa soglie custom dell'apparecchio se presenti, altrimenti default per tipo
+  const item = config.find(c => c.name === name);
+  const defMax = type === 'frigo' ? 4 : -18;
+  const sMax = (item && item.soglia_max !== null && item.soglia_max !== undefined) ? item.soglia_max : defMax;
+  const sMin = (item && item.soglia_min !== null && item.soglia_min !== undefined) ? item.soglia_min : null;
+  const out = v > sMax || (sMin !== null && v < sMin);
   w.classList.toggle('on',out); el.classList.toggle('warn',out);
 }
 
@@ -1532,12 +1683,92 @@ function renderSetup() {
   };
   config.forEach((c,i)=>{
     const d=document.createElement('div'); d.className='setup-item';
+    // Soglie default e correnti
+    const defMax = c.type === 'frigo' ? 4 : -18;
+    const sMax = (c.soglia_max !== null && c.soglia_max !== undefined) ? c.soglia_max : '';
+    const sMin = (c.soglia_min !== null && c.soglia_min !== undefined) ? c.soglia_min : '';
+    const hasCustom = (sMax !== '') || (sMin !== '');
+    const sogliaMaxLabel = hasCustom ? (c.soglia_max != null ? `${c.soglia_max}°C` : `${defMax}°C`) : `${defMax}°C`;
     d.innerHTML=`<div class="device-icon ${c.type}">${icons[c.type]||'❄️'}</div>
-      <div class="setup-info"><div class="name">${c.name}</div>
-        <div class="sub">${c.type==='frigo'?'Frigo (+4°C)':'Gelo (-18°C)'} · ${getZoneLabel(c.area)}</div></div>
-      <button class="del-btn" onclick="deleteDevice(${i})">✕</button>`;
+      <div class="setup-info" style="flex:1;">
+        <div class="name">${c.name}</div>
+        <div class="sub">${c.type==='frigo'?'Frigo':'Gelo'} · Soglia max ${sogliaMaxLabel}${sMin!==''?` · min ${c.soglia_min}°C`:''} · ${getZoneLabel(c.area)}</div>
+        <div class="soglie-row" id="soglie-${i}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed #e2e8f0;">
+          <div style="display:flex;gap:8px;align-items:center;font-size:11px;">
+            <label style="flex:1;">
+              <div style="color:var(--text-muted);margin-bottom:2px;">Soglia max (°C)</div>
+              <input type="number" step="0.5" id="sMax-${i}" value="${sMax}" placeholder="${defMax}" style="width:100%;padding:5px 7px;border:1px solid #d1d5db;border-radius:5px;font-size:12px;">
+            </label>
+            <label style="flex:1;">
+              <div style="color:var(--text-muted);margin-bottom:2px;">Soglia min (°C)</div>
+              <input type="number" step="0.5" id="sMin-${i}" value="${sMin}" placeholder="—" style="width:100%;padding:5px 7px;border:1px solid #d1d5db;border-radius:5px;font-size:12px;">
+            </label>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <button onclick="saveSoglie(${i})" style="flex:1;padding:6px 10px;background:var(--blue);color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;">💾 Salva soglie</button>
+            <button onclick="resetSoglie(${i})" style="padding:6px 10px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;" title="Torna ai valori default (${defMax}°C)">↻ Default</button>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:6px;line-height:1.4;">
+            Lascia vuoto per usare i valori standard (frigo ≤+4°C, gelo ≤-18°C). La soglia min è opzionale (utile per evitare congelamento accidentale nei frigo, es. min 0°C).
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <button class="del-btn" onclick="toggleSoglie(${i})" style="background:${hasCustom?'#dbeafe':'#f3f4f6'};color:#1e40af;border:1px solid ${hasCustom?'#93c5fd':'#d1d5db'};padding:4px 8px;font-size:10px;border-radius:5px;cursor:pointer;font-weight:600;" title="Modifica soglie di anomalia">⚙</button>
+        <button class="del-btn" onclick="deleteDevice(${i})">✕</button>
+      </div>`;
     list.appendChild(d);
   });
+}
+
+function toggleSoglie(i) {
+  const el = document.getElementById('soglie-' + i);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveSoglie(i) {
+  if (!isAdmin()) { showToast('Solo Admin','error'); return; }
+  const dev = config[i];
+  if (!dev || !dev.id) return;
+  const maxEl = document.getElementById('sMax-' + i);
+  const minEl = document.getElementById('sMin-' + i);
+  const sMax = maxEl.value.trim() === '' ? null : parseFloat(maxEl.value);
+  const sMin = minEl.value.trim() === '' ? null : parseFloat(minEl.value);
+  if (sMax !== null && isNaN(sMax)) { showToast('Soglia max non valida','warning'); return; }
+  if (sMin !== null && isNaN(sMin)) { showToast('Soglia min non valida','warning'); return; }
+  if (sMax !== null && sMin !== null && sMin >= sMax) {
+    showToast('Soglia min deve essere < soglia max','warning'); return;
+  }
+  try {
+    const { error } = await sb.from('apparecchi')
+      .update({ soglia_max: sMax, soglia_min: sMin })
+      .eq('id', dev.id);
+    if (error) throw error;
+    dev.soglia_max = sMax;
+    dev.soglia_min = sMin;
+    saveAllLocal();
+    renderSetup();
+    showToast(`Soglie aggiornate per ${dev.name}`, 'success');
+  } catch (e) { showToast('Errore: ' + e.message, 'error'); }
+}
+
+async function resetSoglie(i) {
+  if (!isAdmin()) { showToast('Solo Admin','error'); return; }
+  const dev = config[i];
+  if (!dev || !dev.id) return;
+  if (!confirm(`Ripristinare le soglie standard per "${dev.name}"?`)) return;
+  try {
+    const { error } = await sb.from('apparecchi')
+      .update({ soglia_max: null, soglia_min: null })
+      .eq('id', dev.id);
+    if (error) throw error;
+    dev.soglia_max = null;
+    dev.soglia_min = null;
+    saveAllLocal();
+    renderSetup();
+    showToast(`Soglie ripristinate per ${dev.name}`, 'success');
+  } catch (e) { showToast('Errore: ' + e.message, 'error'); }
 }
 
 async function addDevice() {
